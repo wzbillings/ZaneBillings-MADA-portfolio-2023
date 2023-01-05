@@ -5,7 +5,8 @@ output:
     toc: FALSE
 ---
 
-Hi everyone! My name is Zane and I'll be the TA for MADA this semester.
+Hi everyone! My name is Zane and I'll be the TA for MADA this semester. You can read some more about me on my
+About Me page!
 
 I'll host live/synchronous Zoom office hours once a week, similar to Andreas.
 My meetings will be

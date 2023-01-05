@@ -25,9 +25,11 @@ hopefully I'll be able to help with any problems that y'all have. I am
 hoping to improve my skills on debugging problems and communicating with
 students in this course `r emoji::emoji("grin")`.
 
-The fun fact I always share is that I have a certificate from the state of
-Montana that says I can distinguish between black bears and grizzly bears. I've
-never been to Montana, I got the certificate online.
+In my spare time I like to read (mainly fantasy and horror, but I read all
+kinds of different stuff) and game (I'm currently really into Oxygen Not
+Included). The fun fact I always share is that I have a certificate from the
+state of Montana that says I can distinguish between black bears and grizzly 
+bears. I've never been to Montana, I got the certificate online.
 
 # Link
 
