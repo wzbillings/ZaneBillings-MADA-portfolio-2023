@@ -16,9 +16,9 @@ immunology and the seasonal flu shot.
 
 # My backstory
 
-I have B.S. degrees in applied math and molecular biology from the best school
+I have undergrad degrees in math and biology from the best school
 ever, Western Carolina University (GO CATS! `r emoji::emoji("smiling cat with heart-eyes")`). I already took this class --- if you look hard enough you
-can probably find my portfolio from when I was a student! I've also taken
+can probably find all my stuff from then! I've also taken
 a lot of other statistics classes
 (and a few programming classes too), and I use `R` almost every day. So
 hopefully I'll be able to help with any problems that y'all have. I am
