@@ -5,4 +5,39 @@ output:
       toc: FALSE
 ---
 
-Add some text and a figure describing myself.
+# Welcome to my website.
+
+Hello, everyone! My name is Zane Billings, and I'm the TA for the MADA course
+for the Spring 2023 semester. I'm also a third-year PhD Student in the data
+analysis and modeling program working with Andreas. My work is about flu
+immunology and the seasonal flu shot.
+
+![A picture of me, in my office, working on this website!](static/me.jpg){width=25%}
+
+# My backstory
+
+I have B.S. degrees in applied math and molecular biology from the best school
+ever, Western Carolina University (GO CATS! `r emoji::emoji("smiling cat with heart-eyes")`). I already took this class --- if you look hard enough you
+can probably find my portfolio from when I was a student! I've also taken
+a lot of other statistics classes
+(and a few programming classes too), and I use `R` almost every day. So
+hopefully I'll be able to help with any problems that y'all have. I am
+hoping to improve my skills on debugging problems and communicating with
+students in this course `r emoji::emoji("grin")`.
+
+The fun fact I always share is that I have a certificate from the state of
+Montana that says I can distinguish between black bears and grizzly bears. I've
+never been to Montana, I got the certificate online.
+
+# Link
+
+![Here's one of my favorite data-analysis-related comics.](static/comic.png){width=75%}
+
+I spend a lot of time trying to tell people that no amount of statistics can
+fix messed-up data! Truly it is one of the plights of the modern statistician.
+If you want to go to the comic source, you can go [here](https://dilbert.com/strip/2008-05-07).
+
+
+
+
+

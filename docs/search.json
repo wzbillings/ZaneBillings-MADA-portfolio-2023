@@ -1,0 +1,37 @@
+[
+  {
+    "objectID": "aboutme.html",
+    "href": "aboutme.html",
+    "title": "About me",
+    "section": "",
+    "text": "My backstory\nI have B.S. degrees in applied math and molecular biology from the best school ever, Western Carolina University (GO CATS! 😻). I already took this class — if you look hard enough you can probably find my portfolio from when I was a student! I’ve also taken a lot of other statistics classes (and a few programming classes too), and I use R almost every day. So hopefully I’ll be able to help with any problems that y’all have. I am hoping to improve my skills on debugging problems and communicating with students in this course 😁.\nThe fun fact I always share is that I have a certificate from the state of Montana that says I can distinguish between black bears and grizzly bears. I’ve never been to Montana, I got the certificate online.\n\n\nLink\n\n\n\nHere’s one of my favorite data-analysis-related comics.\n\n\nI spend a lot of time trying to tell people that no amount of statistics can fix messed-up data! Truly it is one of the plights of the modern statistician. If you want to go to the comic source, you can go here."
+  },
+  {
+    "objectID": "coding_exercise.html",
+    "href": "coding_exercise.html",
+    "title": "R Coding Exercise",
+    "section": "",
+    "text": "Placeholder file for the future R coding exercise."
+  },
+  {
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "Zane’s website and data analysis portfolio",
+    "section": "",
+    "text": "On my website, I have bold text, italic text, text that is both, strikethroughs and even superscripts and subscripts. We can even do inline code 😱! But no underlines though.\n\nPlease use the Menu Bar above to look around.\nHave fun!\nIf you figure out underlines, let me know how! My contact info is at my website."
+  },
+  {
+    "objectID": "tidytuesday_exercise.html",
+    "href": "tidytuesday_exercise.html",
+    "title": "Tidy Tuesday Exercise",
+    "section": "",
+    "text": "Placeholder file for the future Tidy Tuesday exercise."
+  },
+  {
+    "objectID": "visualization_exercise.html",
+    "href": "visualization_exercise.html",
+    "title": "Visualization Exercise",
+    "section": "",
+    "text": "Placeholder file for the future visualization exercise."
+  }
+]
