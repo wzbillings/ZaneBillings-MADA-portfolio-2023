@@ -1,21 +1,23 @@
 ---
-title: "Zane's website and data analysis portfolio"
+title: "My website and data analysis portfolio"
 output: 
   html_document:
     toc: FALSE
 ---
 
-# MY WEBSITE
+Hi everyone! My name is Zane and I'll be the TA for MADA this semester.
 
-### This is a level 3 header on Zane's website
+I'll host live/synchronous Zoom office hours once a week, similar to Andreas.
+My meetings will be
 
-On my website, I have **bold text**, **italic text**, ***text that is both***,
-~~strikethroughs~~ and even ^superscripts^ and ~subscripts~.
-We can even do `inline code` `r emoji::emoji("scream")`! But 
-no underlines though.
+* **Wednesday at 1:00 pm for odd-numbered modules** and
+* **Thursday at 1:00 pm for even-numbered modules** at
+* [https://zoom.us/my/wzbillings](https://zoom.us/my/wzbillings).
 
+So hopefully between my office
+hour and Andreas' office hour, there will be a time that works for you. My first office hour will be **Wednesday, January 11th, at 1:00 pm.**
 
-* Please use the `Menu Bar` above to look around.
-* Have fun!
-* If you figure out underlines, let me know how! My contact info is
-at [my website](https://wzbillings.com). 
+Feel free to DM me in our slack group, or you can email me at
+[Wesley.Billings@uga.edu](mailto:Wesley.Billings@uga.edu). Though be advised
+that I never check my phone, so I am unlikely to see emails or slack messages
+outside of "regular business hours".

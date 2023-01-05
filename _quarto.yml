@@ -22,7 +22,9 @@ website:
 
 format:
   html:
-    theme: vapor
+    theme:
+      light: pulse
+      dark: vapor
     highlight: zenburn
     css: styles.css
     toc: FALSE
