@@ -1,0 +1,952 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.2.335">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>My Data Analysis Portfolio - Flu analysis: Basic model fitting</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1.6em;
+  vertical-align: middle;
+}
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+    color: #aaaaaa;
+  }
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+code span.at { color: #7d9029; } /* Attribute */
+code span.bn { color: #40a070; } /* BaseN */
+code span.bu { color: #008000; } /* BuiltIn */
+code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+code span.ch { color: #4070a0; } /* Char */
+code span.cn { color: #880000; } /* Constant */
+code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+code span.dt { color: #902000; } /* DataType */
+code span.dv { color: #40a070; } /* DecVal */
+code span.er { color: #ff0000; font-weight: bold; } /* Error */
+code span.ex { } /* Extension */
+code span.fl { color: #40a070; } /* Float */
+code span.fu { color: #06287e; } /* Function */
+code span.im { color: #008000; font-weight: bold; } /* Import */
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+code span.op { color: #666666; } /* Operator */
+code span.ot { color: #007020; } /* Other */
+code span.pp { color: #bc7a00; } /* Preprocessor */
+code span.sc { color: #4070a0; } /* SpecialChar */
+code span.ss { color: #bb6688; } /* SpecialString */
+code span.st { color: #4070a0; } /* String */
+code span.va { color: #19177c; } /* Variable */
+code span.vs { color: #4070a0; } /* VerbatimString */
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+</style>
+
+
+<script src="../../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../../">
+<script src="../../site_libs/quarto-html/quarto.js"></script>
+<script src="../../site_libs/quarto-html/popper.min.js"></script>
+<script src="../../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../../site_libs/quarto-html/quarto-syntax-highlighting.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
+<link href="../../site_libs/quarto-html/quarto-syntax-highlighting-dark.css" rel="prefetch" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
+<script src="../../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../../site_libs/bootstrap/bootstrap.min.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="../../site_libs/bootstrap/bootstrap-dark.min.css" rel="prefetch" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 20,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit"
+  }
+}</script>
+
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
+
+<link rel="stylesheet" href="../../styles.css">
+</head>
+
+<body class="nav-fixed fullcontent">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg navbar-dark ">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container">
+    <a class="navbar-brand" href="../../index.html">
+    <span class="navbar-title">My Data Analysis Portfolio</span>
+    </a>
+  </div>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll me-auto">
+  <li class="nav-item">
+    <a class="nav-link" href="../.././aboutme.html">
+ <span class="menu-text">About Me</span></a>
+  </li>  
+  <li class="nav-item dropdown ">
+    <a class="nav-link dropdown-toggle" href="#" id="nav-menu-projects" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+ <span class="menu-text">Projects</span>
+    </a>
+    <ul class="dropdown-menu" aria-labelledby="nav-menu-projects">    
+        <li>
+    <a class="dropdown-item" href="../.././coding_exercise.html">
+ <span class="dropdown-text">R Coding Exercise</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="../.././visualization_exercise.html">
+ <span class="dropdown-text">Visualization Exercise</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="../.././tidytuesday_exercise.html">
+ <span class="dropdown-text">Tidy Tuesday Exercise</span></a>
+  </li>  
+    </ul>
+  </li>
+  <li class="nav-item dropdown ">
+    <a class="nav-link dropdown-toggle" href="#" id="nav-menu-flu-analysis" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+ <span class="menu-text">Flu Analysis</span>
+    </a>
+    <ul class="dropdown-menu" aria-labelledby="nav-menu-flu-analysis">    
+        <li>
+    <a class="dropdown-item" href="../.././fluanalysis/code/wrangling.html">
+ <span class="dropdown-text">Wrangling</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="../.././fluanalysis/code/exploration.html">
+ <span class="dropdown-text">Exploration</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="../../.fluanalysis/code/fitting.html">
+ <span class="dropdown-text">Basic model fitting</span></a>
+  </li>  
+    </ul>
+  </li>
+</ul>
+            <ul class="navbar-nav navbar-nav-scroll ms-auto">
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://github.com/wzbillings/ZaneBillings-MADA-portfolio"><i class="bi bi-github" role="img">
+</i> 
+ <span class="menu-text"></span></a>
+  </li>  
+</ul>
+              <div class="quarto-toggle-container">
+                  <a href="" class="quarto-color-scheme-toggle nav-link" onclick="window.quartoToggleColorScheme(); return false;" title="Toggle dark mode"><i class="bi"></i></a>
+              </div>
+              <div id="quarto-search" class="" title="Search"></div>
+          </div> <!-- /navcollapse -->
+      </div> <!-- /container-fluid -->
+    </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+<!-- margin-sidebar -->
+    
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">Flu analysis: Basic model fitting</h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    
+  
+    
+  </div>
+  
+
+</header>
+
+<p>First we’ll load the cleaned data.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>dat <span class="ot">&lt;-</span> readr<span class="sc">::</span><span class="fu">read_rds</span>(here<span class="sc">::</span><span class="fu">here</span>(<span class="st">"fluanalysis"</span>, <span class="st">"data"</span>, <span class="st">"clean-data.Rds"</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Now we will fit some basic regression models to both of our main outcomes of interest: Gaussian (aka ordinary linear) regression for body temperature, and logistic (aka logit-link binomial/Bernoulli GLM) for nausea.</p>
+<p>Let’s do the models for body temperature first. While I usually don’t like attaching entire packages (especially metapackages) into the global namespace, for this project I’ll go ahead and do that because tidymodels is kind of irritating if you don’t.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(tidymodels)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>── Attaching packages ────────────────────────────────────── tidymodels 1.0.0 ──</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>✔ broom        1.0.4     ✔ recipes      1.0.5
+✔ dials        1.2.0     ✔ rsample      1.1.1
+✔ dplyr        1.1.1     ✔ tibble       3.2.1
+✔ ggplot2      3.4.2     ✔ tidyr        1.3.0
+✔ infer        1.0.4     ✔ tune         1.1.0
+✔ modeldata    1.1.0     ✔ workflows    1.1.3
+✔ parsnip      1.0.4     ✔ workflowsets 1.0.0
+✔ purrr        1.0.1     ✔ yardstick    1.1.0</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: package 'broom' was built under R version 4.2.3</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: package 'modeldata' was built under R version 4.2.3</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: package 'parsnip' was built under R version 4.2.3</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: package 'recipes' was built under R version 4.2.3</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: package 'workflows' was built under R version 4.2.3</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>── Conflicts ───────────────────────────────────────── tidymodels_conflicts() ──
+✖ purrr::discard() masks scales::discard()
+✖ dplyr::filter()  masks stats::filter()
+✖ dplyr::lag()     masks stats::lag()
+✖ recipes::step()  masks stats::step()
+• Learn how to get started at https://www.tidymodels.org/start/</code></pre>
+</div>
+</div>
+<section id="body-temperature-models" class="level1">
+<h1>Body temperature models</h1>
+<p>First we’ll define our “model specification” – you can think about us setting up our kitchen equipment. If we were baking cookies, the model specification would be the part where you drag the stand mixer out of the bottom cabinet and preheat the oven. We are specifying the “machinery” that we will use to fit our model.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Gaussian models: BodyTemp is the outcome of interest</span></span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>linear_mod <span class="ot">&lt;-</span> <span class="fu">linear_reg</span>() <span class="sc">|&gt;</span></span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">set_mode</span>(<span class="st">"regression"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">set_engine</span>(<span class="st">"lm"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>OK, since we’re only fitting simple models with no preprocessing steps, we won’t go through all the fuss that we normally would for a robust machine learning model setup – we’ll do that in the next few modeling steps. For now I think it’s sufficient to take our model specification and just fit a specific formula. So we’ll first fit a model with only <code>RunnyNose</code>, and then we’ll fit a model with all of the predictors – note that in <code>R</code>’s formula syntax, you can use <code>.</code> to mean “all variables that I have not already said in this formula.” (See <code>?formula</code> for more details.)</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb12"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Model 1: RunnyNose only</span></span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>temp_mod_simple <span class="ot">&lt;-</span> linear_mod <span class="sc">|&gt;</span></span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">fit</span>(BodyTemp <span class="sc">~</span> RunnyNose, <span class="at">data =</span> dat)</span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a><span class="co"># Model 2: all predictors</span></span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>temp_mod_all <span class="ot">&lt;-</span> linear_mod <span class="sc">|&gt;</span></span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">fit</span>(BodyTemp <span class="sc">~</span> ., <span class="at">data =</span> dat)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Wait, that is it? Yes, indeed, now our two models are fitted. We may want to manually take a look at them which is quite easy.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb13"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(temp_mod_simple)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>parsnip model object
+
+
+Call:
+stats::lm(formula = BodyTemp ~ RunnyNose, data = data)
+
+Coefficients:
+ (Intercept)  RunnyNoseYes  
+     99.1431       -0.2926  </code></pre>
+</div>
+</div>
+<p>Or we can get more information by <em>extracting the engine fit</em>, which will then allow base R to recognize the object.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb15"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a>temp_mod_simple <span class="sc">|&gt;</span></span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a>    parsnip<span class="sc">::</span><span class="fu">extract_fit_engine</span>() <span class="sc">|&gt;</span></span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a>    <span class="fu">summary</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Call:
+stats::lm(formula = BodyTemp ~ RunnyNose, data = data)
+
+Residuals:
+    Min      1Q  Median      3Q     Max 
+-1.9431 -0.7505 -0.3505  0.3495  4.1495 
+
+Coefficients:
+             Estimate Std. Error  t value Pr(&gt;|t|)    
+(Intercept)  99.14313    0.08191 1210.426  &lt; 2e-16 ***
+RunnyNoseYes -0.29265    0.09714   -3.013  0.00268 ** 
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+Residual standard error: 1.19 on 728 degrees of freedom
+Multiple R-squared:  0.01231,   Adjusted R-squared:  0.01096 
+F-statistic: 9.076 on 1 and 728 DF,  p-value: 0.00268</code></pre>
+</div>
+</div>
+<p>I know Andreas said no p-values, but it’s very difficult to tell this function not to show them!</p>
+<p>This basically works the same for any <code>glm()</code> type object and for most things that come from base <code>R</code> (well, from <code>stats</code>, not <code>base</code>, but it’s automatically loaded for you either way). We can do the same thing for the other model.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb17"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(temp_mod_all)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>parsnip model object
+
+
+Call:
+stats::lm(formula = BodyTemp ~ ., data = data)
+
+Coefficients:
+         (Intercept)  SwollenLymphNodesYes    ChestCongestionYes  
+           98.047181             -0.165302              0.087326  
+     ChillsSweatsYes    NasalCongestionYes            CoughYNYes  
+            0.201266             -0.215771              0.313893  
+           SneezeYes            FatigueYes    SubjectiveFeverYes  
+           -0.361924              0.264762              0.436837  
+         HeadacheYes            Weakness.L            Weakness.Q  
+            0.011453              0.268556              0.128131  
+          Weakness.C         WeaknessYNYes               Cough.L  
+            0.029358                    NA             -0.057709  
+             Cough.Q               Cough.C           CoughYN2Yes  
+           -0.030385              0.089783                    NA  
+           Myalgia.L             Myalgia.Q             Myalgia.C  
+           -0.128819             -0.134721              0.097416  
+        MyalgiaYNYes          RunnyNoseYes             AbPainYes  
+                  NA             -0.080485              0.031574  
+        ChestPainYes           DiarrheaYes              EyePnYes  
+            0.105071             -0.156806              0.131544  
+         InsomniaYes           ItchyEyeYes             NauseaYes  
+           -0.006824             -0.008016             -0.034066  
+            EarPnYes            HearingYes        PharyngitisYes  
+            0.093790              0.232203              0.317581  
+       BreathlessYes            ToothPnYes             VisionYes  
+            0.090526             -0.022876             -0.274625  
+            VomitYes             WheezeYes  
+            0.165272             -0.046665  </code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb19"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a>temp_mod_all <span class="sc">|&gt;</span></span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a>    parsnip<span class="sc">::</span><span class="fu">extract_fit_engine</span>() <span class="sc">|&gt;</span></span>
+<span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a>    <span class="fu">summary</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Call:
+stats::lm(formula = BodyTemp ~ ., data = data)
+
+Residuals:
+    Min      1Q  Median      3Q     Max 
+-2.2110 -0.7219 -0.2853  0.4342  4.2095 
+
+Coefficients: (3 not defined because of singularities)
+                      Estimate Std. Error t value Pr(&gt;|t|)    
+(Intercept)          98.047181   0.294443 332.992  &lt; 2e-16 ***
+SwollenLymphNodesYes -0.165302   0.091959  -1.798 0.072682 .  
+ChestCongestionYes    0.087326   0.097546   0.895 0.370973    
+ChillsSweatsYes       0.201266   0.127302   1.581 0.114330    
+NasalCongestionYes   -0.215771   0.113798  -1.896 0.058362 .  
+CoughYNYes            0.313893   0.240738   1.304 0.192707    
+SneezeYes            -0.361924   0.098299  -3.682 0.000249 ***
+FatigueYes            0.264762   0.160558   1.649 0.099596 .  
+SubjectiveFeverYes    0.436837   0.103398   4.225 2.71e-05 ***
+HeadacheYes           0.011453   0.125405   0.091 0.927256    
+Weakness.L            0.268556   0.162229   1.655 0.098291 .  
+Weakness.Q            0.128131   0.115371   1.111 0.267126    
+Weakness.C            0.029358   0.082041   0.358 0.720573    
+WeaknessYNYes               NA         NA      NA       NA    
+Cough.L              -0.057709   0.220131  -0.262 0.793279    
+Cough.Q              -0.030385   0.150408  -0.202 0.839964    
+Cough.C               0.089783   0.091916   0.977 0.329011    
+CoughYN2Yes                 NA         NA      NA       NA    
+Myalgia.L            -0.128819   0.147101  -0.876 0.381487    
+Myalgia.Q            -0.134721   0.105353  -1.279 0.201410    
+Myalgia.C             0.097416   0.080760   1.206 0.228139    
+MyalgiaYNYes                NA         NA      NA       NA    
+RunnyNoseYes         -0.080485   0.108526  -0.742 0.458569    
+AbPainYes             0.031574   0.140236   0.225 0.821927    
+ChestPainYes          0.105071   0.106980   0.982 0.326365    
+DiarrheaYes          -0.156806   0.129545  -1.210 0.226522    
+EyePnYes              0.131544   0.129757   1.014 0.311047    
+InsomniaYes          -0.006824   0.090797  -0.075 0.940114    
+ItchyEyeYes          -0.008016   0.110191  -0.073 0.942028    
+NauseaYes            -0.034066   0.102049  -0.334 0.738620    
+EarPnYes              0.093790   0.113875   0.824 0.410436    
+HearingYes            0.232203   0.222043   1.046 0.296037    
+PharyngitisYes        0.317581   0.121342   2.617 0.009057 ** 
+BreathlessYes         0.090526   0.099837   0.907 0.364863    
+ToothPnYes           -0.022876   0.113750  -0.201 0.840673    
+VisionYes            -0.274625   0.277681  -0.989 0.323010    
+VomitYes              0.165272   0.151432   1.091 0.275478    
+WheezeYes            -0.046665   0.107036  -0.436 0.662990    
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+Residual standard error: 1.144 on 695 degrees of freedom
+Multiple R-squared:  0.1287,    Adjusted R-squared:  0.08605 
+F-statistic: 3.019 on 34 and 695 DF,  p-value: 4.197e-08</code></pre>
+</div>
+</div>
+<p>Here you can see the “3 not defined because of singularities” message in the coefficients section. I’ll explain this in a bit.</p>
+<div class="callout-note callout callout-style-default callout-captioned">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-caption-container flex-fill">
+Note
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>You can also see an “L”, “Q”, and “C” after the names of the ordinal predictors. That is because in <code>R</code>, ordinal variables are parametrized as <em>orthogonal polynomials</em> by default: basically the levels are coded as 1, 2, 3, 4 (in the order none, weak, moderate, severe if you specified the coding correctly) and this numerical variable is included in the model as a linear effect (L), as a quadratic effect (Q, aka squared), and as a cubic effect (C, aka cubed). The orthogonal part just means that these variables are constructed in a way that the L, Q, and C effect are independent of each other.</p>
+</div>
+</div>
+<p>OK, so now let’s get into the part of comparing the model fits. If you’ve taken BIOS 8010 or 8020 in our department, you are probably most familiar with something like the following.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb21"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a>lm_list <span class="ot">&lt;-</span></span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a>    <span class="fu">list</span>(temp_mod_simple, temp_mod_all) <span class="sc">|&gt;</span></span>
+<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a>    purrr<span class="sc">::</span><span class="fu">map</span>(parsnip<span class="sc">::</span>extract_fit_engine)</span>
+<span id="cb21-4"><a href="#cb21-4" aria-hidden="true" tabindex="-1"></a>rlang<span class="sc">::</span><span class="fu">exec</span>(anova, <span class="sc">!!!</span>lm_list, <span class="at">test =</span> <span class="cn">NULL</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Analysis of Variance Table
+
+Model 1: BodyTemp ~ RunnyNose
+Model 2: BodyTemp ~ SwollenLymphNodes + ChestCongestion + ChillsSweats + 
+    NasalCongestion + CoughYN + Sneeze + Fatigue + SubjectiveFever + 
+    Headache + Weakness + WeaknessYN + Cough + CoughYN2 + Myalgia + 
+    MyalgiaYN + RunnyNose + AbPain + ChestPain + Diarrhea + EyePn + 
+    Insomnia + ItchyEye + Nausea + EarPn + Hearing + Pharyngitis + 
+    Breathless + ToothPn + Vision + Vomit + Wheeze
+  Res.Df     RSS Df Sum of Sq
+1    728 1030.53             
+2    695  909.12 33    121.41</code></pre>
+</div>
+</div>
+<div class="callout-tip callout callout-style-default callout-captioned">
+<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-2-contents" aria-controls="callout-2" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-caption-container flex-fill">
+What the heck is that code
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-2" class="callout-2-contents callout-collapse collapse">
+<div class="callout-body-container callout-body">
+<p>So of course you could do the same thing as above by doing something like</p>
+<p><code>anova(parsnip::extract_fit_engine(temp_mod_simple), parsnip::extract_fit_engine(temp_mod_all))</code></p>
+<p>but I suspect that doesn’t even fit on the screen correctly. This is just a way that will allow you to do that for a lot of lm models at one time, if you need to. If you want to read about the details, you can look at the <code>rlang</code> documentation, but it isn’t necessary for this class.</p>
+</div>
+</div>
+</div>
+<p>And then based on this ANOVA table, you would either do a statistical test to determine if the reduction in the sum of squares is significant or whatever. Here I didn’t show the p-value because Andreas and I both think that you should decide on your own whether that reduction in sum of squares is meaningful for your problem. However, that can be kind of hard because we aren’t used to think about squared units. So instead look at some other metrics that are pretty easy to get.</p>
+<div class="callout-warning callout callout-style-default callout-captioned">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-caption-container flex-fill">
+Rank-deficiency
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Note that depending on what you tried to do here, you might have gotten a warning that says something about “rank deficiency”. This is caused by the same issue that gave us 3 coefficients “not defined because of singularities”. this is the same thing. Our cough, myalgia, and weakness yes/no variables do not provide any information that is different from what’s in the severity variables (once you know someone’s severity, you automatically know their response to the yes/no variable). Our model doesn’t know what to do in this case, which is why we get these warnings! For now you should ignore them but you shouldn’t ignore these warnings in real life and we won’t in the next modeling assignment.</p>
+<p>(If you know some linear algebra or stat theory, this is because our cough, myalgia, and weakness yes/no variables are linearly dependent on the ordinal versions of those variables and thus the coefficients for those variables are not estimable.)</p>
+</div>
+</div>
+<p>So when we look at these models in terms of RMSE, the difference is not that big, but the <span class="math inline">\(R^2\)</span> is certainly larger, by about 10%. However, you may recall from your stat classes that this <span class="math inline">\(R^2\)</span> is not <strong>adjusted</strong> and thus will always increased when we add more predictors. Since we are building predictive models, that doesn’t typically matter as much as it does when we’re trying to build inferential models. But you should certainly notice that the changes in RMSE and MAE are both much smaller in magnitude, indicating that the model with more predictors doesn’t do that much better of a job at prediction.</p>
+<p>We’ll use the <code>broom::glance()</code> function to get metrics now with a more in-depth discussion of model evaluation in the next model.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb23"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a>temp_simple_res <span class="ot">&lt;-</span> broom<span class="sc">::</span><span class="fu">glance</span>(temp_mod_simple)</span>
+<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a>temp_all_res <span class="ot">&lt;-</span> broom<span class="sc">::</span><span class="fu">glance</span>(temp_mod_all)</span>
+<span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-4"><a href="#cb23-4" aria-hidden="true" tabindex="-1"></a>temp_simple_res</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 1 × 12
+  r.squared adj.r.squared sigma statistic p.value    df logLik   AIC   BIC
+      &lt;dbl&gt;         &lt;dbl&gt; &lt;dbl&gt;     &lt;dbl&gt;   &lt;dbl&gt; &lt;dbl&gt;  &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;
+1    0.0123        0.0110  1.19      9.08 0.00268     1 -1162. 2329. 2343.
+# ℹ 3 more variables: deviance &lt;dbl&gt;, df.residual &lt;int&gt;, nobs &lt;int&gt;</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb25"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a>temp_all_res</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 1 × 12
+  r.squared adj.r.squared sigma statistic      p.value    df logLik   AIC   BIC
+      &lt;dbl&gt;         &lt;dbl&gt; &lt;dbl&gt;     &lt;dbl&gt;        &lt;dbl&gt; &lt;dbl&gt;  &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;
+1     0.129        0.0860  1.14      3.02 0.0000000420    34 -1116. 2304. 2469.
+# ℹ 3 more variables: deviance &lt;dbl&gt;, df.residual &lt;int&gt;, nobs &lt;int&gt;</code></pre>
+</div>
+</div>
+<p>As you can see, we get the unadjusted and adjusted <span class="math inline">\(R^2\)</span>, and it seems that the model with more predictors does fit a bit better. Although this is also an interesting case where the AIC and BIC can disagree with each other on the best model (this happens most often when you are comparing models with a large difference in the number of parameters).</p>
+<p>OK, now let’s move on to the logistic regression models, they are basically the same so you won’t get as much commentary from me this time.</p>
+</section>
+<section id="logistic-regression-models" class="level1">
+<h1>Logistic regression models</h1>
+<p>First set up the model spec and fit the models.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb27"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Logistic models: Nausea is the outcome of interest</span></span>
+<span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a>logistic_mod <span class="ot">&lt;-</span> <span class="fu">logistic_reg</span>() <span class="sc">|&gt;</span></span>
+<span id="cb27-3"><a href="#cb27-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">set_mode</span>(<span class="st">"classification"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb27-4"><a href="#cb27-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">set_engine</span>(<span class="st">"glm"</span>)</span>
+<span id="cb27-5"><a href="#cb27-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb27-6"><a href="#cb27-6" aria-hidden="true" tabindex="-1"></a><span class="co"># Model 1: RunnyNose only</span></span>
+<span id="cb27-7"><a href="#cb27-7" aria-hidden="true" tabindex="-1"></a>nausea_mod_simple <span class="ot">&lt;-</span> logistic_mod <span class="sc">|&gt;</span></span>
+<span id="cb27-8"><a href="#cb27-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">fit</span>(Nausea <span class="sc">~</span> RunnyNose, <span class="at">data =</span> dat)</span>
+<span id="cb27-9"><a href="#cb27-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb27-10"><a href="#cb27-10" aria-hidden="true" tabindex="-1"></a><span class="co"># Model 2: all predictors</span></span>
+<span id="cb27-11"><a href="#cb27-11" aria-hidden="true" tabindex="-1"></a>nausea_mod_all <span class="ot">&lt;-</span> logistic_mod <span class="sc">|&gt;</span></span>
+<span id="cb27-12"><a href="#cb27-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">fit</span>(Nausea <span class="sc">~</span> ., <span class="at">data =</span> dat)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Now we’ll peek at the model summaries.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb28"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a>nausea_mod_simple <span class="sc">|&gt;</span></span>
+<span id="cb28-2"><a href="#cb28-2" aria-hidden="true" tabindex="-1"></a>    parsnip<span class="sc">::</span><span class="fu">extract_fit_engine</span>() <span class="sc">|&gt;</span></span>
+<span id="cb28-3"><a href="#cb28-3" aria-hidden="true" tabindex="-1"></a>    <span class="fu">summary</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Call:
+stats::glm(formula = Nausea ~ RunnyNose, family = stats::binomial, 
+    data = data)
+
+Deviance Residuals: 
+    Min       1Q   Median       3Q      Max  
+-0.9325  -0.9325  -0.9137   1.4439   1.4664  
+
+Coefficients:
+             Estimate Std. Error z value Pr(&gt;|z|)    
+(Intercept)  -0.65781    0.14520  -4.530 5.89e-06 ***
+RunnyNoseYes  0.05018    0.17182   0.292     0.77    
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+(Dispersion parameter for binomial family taken to be 1)
+
+    Null deviance: 944.65  on 729  degrees of freedom
+Residual deviance: 944.57  on 728  degrees of freedom
+AIC: 948.57
+
+Number of Fisher Scoring iterations: 4</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb30"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a>nausea_mod_all <span class="sc">|&gt;</span></span>
+<span id="cb30-2"><a href="#cb30-2" aria-hidden="true" tabindex="-1"></a>    parsnip<span class="sc">::</span><span class="fu">extract_fit_engine</span>() <span class="sc">|&gt;</span></span>
+<span id="cb30-3"><a href="#cb30-3" aria-hidden="true" tabindex="-1"></a>    <span class="fu">summary</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Call:
+stats::glm(formula = Nausea ~ ., family = stats::binomial, data = data)
+
+Deviance Residuals: 
+    Min       1Q   Median       3Q      Max  
+-1.9065  -0.8138  -0.5301   0.8581   2.4268  
+
+Coefficients: (3 not defined because of singularities)
+                     Estimate Std. Error z value Pr(&gt;|z|)    
+(Intercept)           0.17281    7.84007   0.022 0.982414    
+SwollenLymphNodesYes -0.25108    0.19603  -1.281 0.200248    
+ChestCongestionYes    0.27555    0.21266   1.296 0.195066    
+ChillsSweatsYes       0.27410    0.28783   0.952 0.340948    
+NasalCongestionYes    0.42582    0.25456   1.673 0.094376 .  
+CoughYNYes           -0.14042    0.51880  -0.271 0.786644    
+SneezeYes             0.17672    0.21035   0.840 0.400828    
+FatigueYes            0.22906    0.37188   0.616 0.537925    
+SubjectiveFeverYes    0.27774    0.22536   1.232 0.217793    
+HeadacheYes           0.33126    0.28490   1.163 0.244937    
+Weakness.L            0.64891    0.35707   1.817 0.069165 .  
+Weakness.Q            0.31697    0.25838   1.227 0.219909    
+Weakness.C           -0.10603    0.18327  -0.579 0.562891    
+WeaknessYNYes              NA         NA      NA       NA    
+Cough.L              -0.66937    0.46154  -1.450 0.146977    
+Cough.Q              -0.18354    0.31742  -0.578 0.563121    
+Cough.C              -0.11737    0.19244  -0.610 0.541928    
+CoughYN2Yes                NA         NA      NA       NA    
+Myalgia.L             0.12772    0.31428   0.406 0.684469    
+Myalgia.Q            -0.03992    0.23003  -0.174 0.862226    
+Myalgia.C            -0.11312    0.17732  -0.638 0.523484    
+MyalgiaYNYes               NA         NA      NA       NA    
+RunnyNoseYes          0.04532    0.23264   0.195 0.845535    
+AbPainYes             0.93930    0.28146   3.337 0.000846 ***
+ChestPainYes          0.07078    0.22786   0.311 0.756090    
+DiarrheaYes           1.06393    0.25871   4.113 3.91e-05 ***
+EyePnYes             -0.34199    0.27772  -1.231 0.218164    
+InsomniaYes           0.08418    0.19299   0.436 0.662710    
+ItchyEyeYes          -0.06336    0.23250  -0.273 0.785212    
+EarPnYes             -0.18172    0.23921  -0.760 0.447451    
+HearingYes            0.32305    0.45240   0.714 0.475177    
+PharyngitisYes        0.27536    0.26606   1.035 0.300680    
+BreathlessYes         0.52680    0.20858   2.526 0.011548 *  
+ToothPnYes            0.48065    0.22947   2.095 0.036209 *  
+VisionYes             0.12550    0.54111   0.232 0.816596    
+VomitYes              2.45847    0.34861   7.052 1.76e-12 ***
+WheezeYes            -0.30443    0.23408  -1.301 0.193417    
+BodyTemp             -0.03125    0.07984  -0.391 0.695526    
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+(Dispersion parameter for binomial family taken to be 1)
+
+    Null deviance: 944.65  on 729  degrees of freedom
+Residual deviance: 751.47  on 695  degrees of freedom
+AIC: 821.47
+
+Number of Fisher Scoring iterations: 4</code></pre>
+</div>
+</div>
+<p>We can again look at the analysis of deviance table (the equivalent to analysis of variance for a non-Gaussian GLM), but again remember that this is just for comparison.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb32"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a>glm_list <span class="ot">&lt;-</span></span>
+<span id="cb32-2"><a href="#cb32-2" aria-hidden="true" tabindex="-1"></a>    <span class="fu">list</span>(nausea_mod_simple, nausea_mod_all) <span class="sc">|&gt;</span></span>
+<span id="cb32-3"><a href="#cb32-3" aria-hidden="true" tabindex="-1"></a>    purrr<span class="sc">::</span><span class="fu">map</span>(parsnip<span class="sc">::</span>extract_fit_engine)</span>
+<span id="cb32-4"><a href="#cb32-4" aria-hidden="true" tabindex="-1"></a>rlang<span class="sc">::</span><span class="fu">exec</span>(anova, <span class="sc">!!!</span>glm_list, <span class="at">test =</span> <span class="cn">NULL</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Analysis of Deviance Table
+
+Model 1: Nausea ~ RunnyNose
+Model 2: Nausea ~ SwollenLymphNodes + ChestCongestion + ChillsSweats + 
+    NasalCongestion + CoughYN + Sneeze + Fatigue + SubjectiveFever + 
+    Headache + Weakness + WeaknessYN + Cough + CoughYN2 + Myalgia + 
+    MyalgiaYN + RunnyNose + AbPain + ChestPain + Diarrhea + EyePn + 
+    Insomnia + ItchyEye + EarPn + Hearing + Pharyngitis + Breathless + 
+    ToothPn + Vision + Vomit + Wheeze + BodyTemp
+  Resid. Df Resid. Dev Df Deviance
+1       728     944.57            
+2       695     751.47 33   193.09</code></pre>
+</div>
+</div>
+<p>And now let’s look at the <code>glance()</code> results.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb34"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb34-1"><a href="#cb34-1" aria-hidden="true" tabindex="-1"></a>nausea_simple_res <span class="ot">&lt;-</span> broom<span class="sc">::</span><span class="fu">glance</span>(nausea_mod_simple)</span>
+<span id="cb34-2"><a href="#cb34-2" aria-hidden="true" tabindex="-1"></a>nausea_all_res <span class="ot">&lt;-</span> broom<span class="sc">::</span><span class="fu">glance</span>(nausea_mod_all)</span>
+<span id="cb34-3"><a href="#cb34-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb34-4"><a href="#cb34-4" aria-hidden="true" tabindex="-1"></a>nausea_simple_res</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 1 × 8
+  null.deviance df.null logLik   AIC   BIC deviance df.residual  nobs
+          &lt;dbl&gt;   &lt;int&gt;  &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;    &lt;dbl&gt;       &lt;int&gt; &lt;int&gt;
+1          945.     729  -472.  949.  958.     945.         728   730</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb36"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb36-1"><a href="#cb36-1" aria-hidden="true" tabindex="-1"></a>nausea_all_res</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 1 × 8
+  null.deviance df.null logLik   AIC   BIC deviance df.residual  nobs
+          &lt;dbl&gt;   &lt;int&gt;  &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;    &lt;dbl&gt;       &lt;int&gt; &lt;int&gt;
+1          945.     729  -376.  821.  982.     751.         695   730</code></pre>
+</div>
+</div>
+<p>These results look a bit different from the linear regression results – here, we can’t do the <span class="math inline">\(R^2\)</span> in the same way that we can for the linear regression models. The best equivalent metric is the <strong>deviance</strong>, which is penalized by the number of parameters in the AIC/BIC. Again, we’ll discuss the correct way to interpret model results and goodness-of-fit in the next module, but just know that Andreas and I typically don’t like the AIC/BIC or the p-value approach.</p>
+</section>
+<section id="save-results" class="level1">
+<h1>Save results</h1>
+<p>Ok, finally we’ll save our results. For now I’ll save the <code>glance()</code> results, that way we could use them while writing up our reports. For example, you could include some text like this in your report:</p>
+<p><code>948.57</code></p>
+<p>and that lets you easily type things like “The AIC for the logistic regression model with only runny nose status as a predictor was 948.57, while the AIC for the full model with all predictors was 821.47” without having to type the numbers – check the Quarto document for this page for an example if you want to.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb38"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb38-1"><a href="#cb38-1" aria-hidden="true" tabindex="-1"></a><span class="fu">saveRDS</span>(temp_simple_res, <span class="at">file =</span> here<span class="sc">::</span><span class="fu">here</span>(<span class="st">"fluanalysis"</span>, <span class="st">"results"</span>, <span class="st">"temp_simple_res.Rds"</span>))</span>
+<span id="cb38-2"><a href="#cb38-2" aria-hidden="true" tabindex="-1"></a><span class="fu">saveRDS</span>(temp_all_res, <span class="at">file =</span> here<span class="sc">::</span><span class="fu">here</span>(<span class="st">"fluanalysis"</span>, <span class="st">"results"</span>, <span class="st">"temp_all_res.Rds"</span>))</span>
+<span id="cb38-3"><a href="#cb38-3" aria-hidden="true" tabindex="-1"></a><span class="fu">saveRDS</span>(nausea_simple_res, <span class="at">file =</span> here<span class="sc">::</span><span class="fu">here</span>(<span class="st">"fluanalysis"</span>, <span class="st">"results"</span>, <span class="st">"nausea_simple_res.Rds"</span>))</span>
+<span id="cb38-4"><a href="#cb38-4" aria-hidden="true" tabindex="-1"></a><span class="fu">saveRDS</span>(nausea_all_res, <span class="at">file =</span> here<span class="sc">::</span><span class="fu">here</span>(<span class="st">"fluanalysis"</span>, <span class="st">"results"</span>, <span class="st">"nausea_all_res.Rds"</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<!-- END OF FILE -->
+
+
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+window.document.addEventListener("DOMContentLoaded", function (event) {
+  const toggleBodyColorMode = (bsSheetEl) => {
+    const mode = bsSheetEl.getAttribute("data-mode");
+    const bodyEl = window.document.querySelector("body");
+    if (mode === "dark") {
+      bodyEl.classList.add("quarto-dark");
+      bodyEl.classList.remove("quarto-light");
+    } else {
+      bodyEl.classList.add("quarto-light");
+      bodyEl.classList.remove("quarto-dark");
+    }
+  }
+  const toggleBodyColorPrimary = () => {
+    const bsSheetEl = window.document.querySelector("link#quarto-bootstrap");
+    if (bsSheetEl) {
+      toggleBodyColorMode(bsSheetEl);
+    }
+  }
+  toggleBodyColorPrimary();  
+  const disableStylesheet = (stylesheets) => {
+    for (let i=0; i < stylesheets.length; i++) {
+      const stylesheet = stylesheets[i];
+      stylesheet.rel = 'prefetch';
+    }
+  }
+  const enableStylesheet = (stylesheets) => {
+    for (let i=0; i < stylesheets.length; i++) {
+      const stylesheet = stylesheets[i];
+      stylesheet.rel = 'stylesheet';
+    }
+  }
+  const manageTransitions = (selector, allowTransitions) => {
+    const els = window.document.querySelectorAll(selector);
+    for (let i=0; i < els.length; i++) {
+      const el = els[i];
+      if (allowTransitions) {
+        el.classList.remove('notransition');
+      } else {
+        el.classList.add('notransition');
+      }
+    }
+  }
+  const toggleColorMode = (alternate) => {
+    // Switch the stylesheets
+    const alternateStylesheets = window.document.querySelectorAll('link.quarto-color-scheme.quarto-color-alternate');
+    manageTransitions('#quarto-margin-sidebar .nav-link', false);
+    if (alternate) {
+      enableStylesheet(alternateStylesheets);
+      for (const sheetNode of alternateStylesheets) {
+        if (sheetNode.id === "quarto-bootstrap") {
+          toggleBodyColorMode(sheetNode);
+        }
+      }
+    } else {
+      disableStylesheet(alternateStylesheets);
+      toggleBodyColorPrimary();
+    }
+    manageTransitions('#quarto-margin-sidebar .nav-link', true);
+    // Switch the toggles
+    const toggles = window.document.querySelectorAll('.quarto-color-scheme-toggle');
+    for (let i=0; i < toggles.length; i++) {
+      const toggle = toggles[i];
+      if (toggle) {
+        if (alternate) {
+          toggle.classList.add("alternate");     
+        } else {
+          toggle.classList.remove("alternate");
+        }
+      }
+    }
+    // Hack to workaround the fact that safari doesn't
+    // properly recolor the scrollbar when toggling (#1455)
+    if (navigator.userAgent.indexOf('Safari') > 0 && navigator.userAgent.indexOf('Chrome') == -1) {
+      manageTransitions("body", false);
+      window.scrollTo(0, 1);
+      setTimeout(() => {
+        window.scrollTo(0, 0);
+        manageTransitions("body", true);
+      }, 40);  
+    }
+  }
+  const isFileUrl = () => { 
+    return window.location.protocol === 'file:';
+  }
+  const hasAlternateSentinel = () => {  
+    let styleSentinel = getColorSchemeSentinel();
+    if (styleSentinel !== null) {
+      return styleSentinel === "alternate";
+    } else {
+      return false;
+    }
+  }
+  const setStyleSentinel = (alternate) => {
+    const value = alternate ? "alternate" : "default";
+    if (!isFileUrl()) {
+      window.localStorage.setItem("quarto-color-scheme", value);
+    } else {
+      localAlternateSentinel = value;
+    }
+  }
+  const getColorSchemeSentinel = () => {
+    if (!isFileUrl()) {
+      const storageValue = window.localStorage.getItem("quarto-color-scheme");
+      return storageValue != null ? storageValue : localAlternateSentinel;
+    } else {
+      return localAlternateSentinel;
+    }
+  }
+  let localAlternateSentinel = 'default';
+  // Dark / light mode switch
+  window.quartoToggleColorScheme = () => {
+    // Read the current dark / light value 
+    let toAlternate = !hasAlternateSentinel();
+    toggleColorMode(toAlternate);
+    setStyleSentinel(toAlternate);
+  };
+  // Ensure there is a toggle, if there isn't float one in the top right
+  if (window.document.querySelector('.quarto-color-scheme-toggle') === null) {
+    const a = window.document.createElement('a');
+    a.classList.add('top-right');
+    a.classList.add('quarto-color-scheme-toggle');
+    a.href = "";
+    a.onclick = function() { try { window.quartoToggleColorScheme(); } catch {} return false; };
+    const i = window.document.createElement("i");
+    i.classList.add('bi');
+    a.appendChild(i);
+    window.document.body.appendChild(a);
+  }
+  // Switch to dark mode if need be
+  if (hasAlternateSentinel()) {
+    toggleColorMode(true);
+  } else {
+    toggleColorMode(false);
+  }
+  const icon = "";
+  const anchorJS = new window.AnchorJS();
+  anchorJS.options = {
+    placement: 'right',
+    icon: icon
+  };
+  anchorJS.add('.anchored');
+  const clipboard = new window.ClipboardJS('.code-copy-button', {
+    target: function(trigger) {
+      return trigger.previousElementSibling;
+    }
+  });
+  clipboard.on('success', function(e) {
+    // button target
+    const button = e.trigger;
+    // don't keep focus
+    button.blur();
+    // flash "checked"
+    button.classList.add('code-copy-button-checked');
+    var currentTitle = button.getAttribute("title");
+    button.setAttribute("title", "Copied!");
+    let tooltip;
+    if (window.bootstrap) {
+      button.setAttribute("data-bs-toggle", "tooltip");
+      button.setAttribute("data-bs-placement", "left");
+      button.setAttribute("data-bs-title", "Copied!");
+      tooltip = new bootstrap.Tooltip(button, 
+        { trigger: "manual", 
+          customClass: "code-copy-button-tooltip",
+          offset: [0, -8]});
+      tooltip.show();    
+    }
+    setTimeout(function() {
+      if (tooltip) {
+        tooltip.hide();
+        button.removeAttribute("data-bs-title");
+        button.removeAttribute("data-bs-toggle");
+        button.removeAttribute("data-bs-placement");
+      }
+      button.setAttribute("title", currentTitle);
+      button.classList.remove('code-copy-button-checked');
+    }, 1000);
+    // clear code selection
+    e.clearSelection();
+  });
+  function tippyHover(el, contentFn) {
+    const config = {
+      allowHTML: true,
+      content: contentFn,
+      maxWidth: 500,
+      delay: 100,
+      arrow: false,
+      appendTo: function(el) {
+          return el.parentElement;
+      },
+      interactive: true,
+      interactiveBorder: 10,
+      theme: 'quarto',
+      placement: 'bottom-start'
+    };
+    window.tippy(el, config); 
+  }
+  const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+  for (var i=0; i<noterefs.length; i++) {
+    const ref = noterefs[i];
+    tippyHover(ref, function() {
+      // use id or data attribute instead here
+      let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+      try { href = new URL(href).hash; } catch {}
+      const id = href.replace(/^#\/?/, "");
+      const note = window.document.getElementById(id);
+      return note.innerHTML;
+    });
+  }
+  const findCites = (el) => {
+    const parentEl = el.parentElement;
+    if (parentEl) {
+      const cites = parentEl.dataset.cites;
+      if (cites) {
+        return {
+          el,
+          cites: cites.split(' ')
+        };
+      } else {
+        return findCites(el.parentElement)
+      }
+    } else {
+      return undefined;
+    }
+  };
+  var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+  for (var i=0; i<bibliorefs.length; i++) {
+    const ref = bibliorefs[i];
+    const citeInfo = findCites(ref);
+    if (citeInfo) {
+      tippyHover(citeInfo.el, function() {
+        var popup = window.document.createElement('div');
+        citeInfo.cites.forEach(function(cite) {
+          var citeDiv = window.document.createElement('div');
+          citeDiv.classList.add('hanging-indent');
+          citeDiv.classList.add('csl-entry');
+          var biblioDiv = window.document.getElementById('ref-' + cite);
+          if (biblioDiv) {
+            citeDiv.innerHTML = biblioDiv.innerHTML;
+          }
+          popup.appendChild(citeDiv);
+        });
+        return popup.innerHTML;
+      });
+    }
+  }
+});
+</script>
+</div> <!-- /content -->
+
+
+
+</body></html>

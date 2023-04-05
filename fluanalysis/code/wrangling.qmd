@@ -1,0 +1,74 @@
+---
+title: "Flu analysis wrangling"
+output:
+  html_document:
+    toc: FALSE
+---
+
+```{r setup, include = FALSE}
+# Declare package dependencies
+box::use(
+	readr,
+	dplyr,
+	tidyselect,
+	tidyr
+)
+```
+
+
+For this analysis, we'll look at data from Brian McKay et al.'s paper,
+*Virulence-mediated infectiousness and activity trade-offs and their impact on transmission potential of patients infected with influenza*. You can find the data [here](https://datadryad.org/stash/dataset/doi:10.5061/dryad.51c59zw4v).
+
+First we'll read in his processed data file.
+
+```{r import}
+# Load the data
+dat_orig <-
+	readr::read_rds(
+		here::here("fluanalysis", "data", "SympAct_Any_Pos.Rda")
+	)
+```
+
+We need to do a little bit of data cleaning to get this ready for our secondary
+(...tertiary?) analysis. We only want some of the variables, and for this
+project we'll just drop any missing observations, although in real life
+we would probably want to think about it a little bit more before
+dropping the missing observations (that is a joke, but it seems to be
+what everyone means when they say "consider missing data more closely").
+
+```{r data processing}
+dat <- dat_orig |>
+	# Remove the unwanted variables
+	dplyr::select(
+		-tidyselect::matches("(Score|Total|FluA|FluB|Dxname|Activity)"),
+		-Unique.Visit
+	) |>
+	# Rename CoughIntensity to Cough to save me 10 seconds of typing
+	dplyr::rename(Cough = CoughIntensity) |>
+	# Code symptom intensities as ordered factors
+	dplyr::mutate(
+		dplyr::across(
+			.cols = c(Cough, Myalgia, Weakness),
+			.fns = ~factor(.x,
+										 levels = c("None", "Mild", "Moderate", "Severe"),
+										 ordered = TRUE)
+		)
+	) |>
+	# Drop rows with any missing variables
+	tidyr::drop_na()
+
+# Check to make sure the data is right
+dplyr::glimpse(dat)
+```
+
+We have 730 observations of 32 variables, just like we are supposed to.
+So we can move on to the EDA step after we save the data.
+
+```{r}
+readr::write_rds(
+	dat,
+	here::here("fluanalysis", "data", "clean-data.Rds")
+)
+```
+
+
