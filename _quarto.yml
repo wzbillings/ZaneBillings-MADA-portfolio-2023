@@ -23,7 +23,9 @@ website:
           - text: "Exploration"
             href: ./fluanalysis/code/exploration.html
           - text: "Basic model fitting"
-            href: /.fluanalysis/code/fitting.html
+            href: ./fluanalysis/code/fitting.html
+          - text: "Model evaluation"
+            href: ./fluanalysis/code/modeleval.html
     right:
       - icon: github 
         href: https://github.com/wzbillings/ZaneBillings-MADA-portfolio

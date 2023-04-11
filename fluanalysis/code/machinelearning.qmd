@@ -1,0 +1,323 @@
+---
+title: "Flu analysis: Machine learning"
+output:
+  html_document:
+    toc: FALSE
+---
+
+```{r setup, include = FALSE}
+# Declare dependencies, I was feeling super lazy today but should have been
+# much more explicit than this
+box::use(
+	tidymodels,
+	tidyverse,
+	ggplot2[...],
+	rpart,
+	rpart.plot,
+	glmnet,
+	ranger
+)
+
+if (interactive()) {options(tidymodels.dark = TRUE)}
+```
+
+The first thing we need to do for this exercise (the final one in our
+flu analysis series) is a bit more data wrangling. We'll deal with
+feature selection, rank deficiency, and near-zero variance predictors. All of
+the issues we want to solve are explained well on the website, so I'll let
+y'all [check that](https://andreashandel.github.io/MADAcourse/Assessment_ML_Models_1.html) for explanations about that stuff. I'll go ahead and
+clean the data so you can see how I would deal with these issues.
+
+```{r}
+# First load in the data from last time
+dat_orig <- readr::read_rds(here::here("fluanalysis", "data", "clean-data.Rds"))
+
+# Next we'll do the data processing that we need
+dat <-
+	dat_orig |>
+	# Convert to tibble so it prints nicer
+	tibble::as_tibble() |>
+	# Remove the unwanted variables -- we don't need the YN versions of these
+	# variables cause the ordinal versions contain more information.
+	# I already did the ordinal coding in a previous script, you can check
+	# the previous solutions for how to do that part.
+	dplyr::select(-c(CoughYN, CoughYN2, MyalgiaYN, WeaknessYN)) |>
+	# Remove binary variables with < 50 events
+	dplyr::select(
+		# Remove all UNORDERED factor variables with less than 50 yes
+		# We can write an anonymous function (the \(x) declares this) that
+		# will select all variables that are factors, not ordered, and have
+		# less than 50 Yes entries. Then the - sign negates that so we drop
+		# those variables instead of keeping them.
+		-where(\(x) (sum(x == "Yes") < 50) & is.factor(x) & !is.ordered(x)),
+	)
+
+dplyr::glimpse(dat)
+```
+
+You can see that we have 730 rows and 26 columns like we are supposed to!
+Now our data is ready to go. The first thing we need to do is
+"spend our data budget."
+
+# Data setup
+
+First we'll split the dataset into training and testing sets.
+
+```{r}
+# Now split the data
+set.seed(123)
+dat_split <-
+	dat |>
+	rsample::initial_split(
+		prop = 0.7,
+		strata = BodyTemp
+	)
+dat_train <- rsample::training(dat_split)
+dat_test <- rsample::testing(dat_split)
+```
+
+Now we'll create a set of 5x5 cross validation folds.
+
+```{r}
+dat_cv <-
+	dat |>
+	rsample::vfold_cv(
+		v = 5,
+		repeats = 5,
+		strata = BodyTemp
+	)
+```
+
+Finally we'll create our recipe for fitting the models. For this assignment,
+our continuous outcome will be `BodyTemp`.
+
+```{r}
+# recipe for BodyTemp
+rec_bodytemp <-
+	# Create the recipe with the formula specifying the outcome
+	dat_train |>
+	recipes::recipe(formula = BodyTemp ~ .) |>
+	# Convert the ordinal variables into integers. This may not be the best way
+	# to do this, but it is easy and sufficiently handling ordinal predictors
+	# is actually a very complicated topic.
+	recipes::step_ordinalscore(Cough, Myalgia, Weakness) |>
+	# Convert nominal factor variables into 0/1 dummy variables (AKA indicators)
+	recipes::step_dummy(recipes::all_nominal_predictors())
+```
+
+# Null model performance
+
+For our continuous outcome, we need to fit a **null model** in order to
+assess baseline performance. For our categorical model, most accuracy metrics
+are interpretable (like accuracy and ROC AUC), but for continuous outcomes,
+most metrics are in response units and there is no "upper bound," so assessing
+the performance on a null model is needed to understand how good our
+models actually are.
+
+Instead of just doing the RMSE (which you can get with `yardstick::rmse()`),
+I thought it would be interesting to use a `metric_set()` here: a collection
+of `yardstick` metrics that you can get all at the same time. So first we'll
+define the metric set we want to use.
+
+```{r}
+metrics <-
+	yardstick::metric_set(
+		# RMSE: the "standard" metric
+		yardstick::rmse,
+		# MAE: outliers are not as influential
+		yardstick::mae
+		# That's all for now but you can add others if you like.
+	)
+```
+
+
+```{r}
+# First create a parsnip model specification
+null_spec <-
+	parsnip::null_model() |>
+	# Our outcome is continuous, so this is a regression problem
+	parsnip::set_mode("regression") |>
+	# The only choice for the engine is parsnip -- you don't technically need to
+	# set this, but sometimes if you don't, it breaks
+	parsnip::set_engine("parsnip")
+
+# Now we make a workflow
+null_wf <-
+	workflows::workflow() |>
+	workflows::add_recipe(rec_bodytemp) |>
+	workflows::add_model(null_spec)
+
+# Now we fit the workflow and get predictions
+null_wf_train <-
+	null_wf |>
+	parsnip::fit(data = dat_train)
+
+null_metrics <-
+	null_wf_train |>
+	broom::augment(new_data = dat_train) |>
+	metrics(truth = BodyTemp, estimate = .pred)
+
+null_metrics
+```
+
+Now we have a baseline RMSE and
+MAE that we can use for comparison to our fitted models.
+
+# Model tuning and fitting
+
+For this exercise, we need to fit three models: a tree, a LASSO model, and
+a random forest model. We'll start with the tree.
+
+## Tree Model
+
+For this model, I'll explain all the details for what we're doing. In subsequent
+models, I'll just explain what is new. However, the first step is making a
+recipe, which we already know how to do. The only part that changes here
+is the model function and engine we need to set. You can find a list of
+model functions and the engines/modes they accept on the [parsnip site](https://www.tidymodels.org/find/parsnip/).
+
+If you search for "tree" in the title section of that page, you can
+see that the function we need to use is `decision_tree()`. We use this in the
+same place that we used `linear_reg()` before. You can see on the website
+page for this function that there are multiple different engines
+available. But we'll use the one that is the default and the most common
+decision tree engine in R, called `rpart`. Make sure you install the
+`rpart` package for this!
+
+Note that in this recipe, there are **hyperparameters** that we have to specify!
+A tidymodels `decision_tree()` has three tuning parameters (one of which
+they ignore in the tutorial, and has the default chosen by `rpart`): tree
+depth, cost complexity, and min $n$. Here we'll tune all three of those,
+so we'll put in *placeholders* for those parameters.
+
+```{r}
+# Create the recipe
+tree_spec <-
+	parsnip::decision_tree(
+		cost_complexity = parsnip::tune(),
+		tree_depth = parsnip::tune(),
+		min_n = parsnip::tune()
+	) |>
+	# Decision trees can be for either classification or regression so you
+	# should always set the mode for this model!!
+	parsnip::set_mode("regression") |>
+	# Set the engine -- I recommend that you do this even though we are using
+	# the default because the tidyverse/tidymodels teams sometimes like
+	# to change the defaults
+	parsnip::set_engine("rpart")
+
+# Put the recipe and model together into a workflow
+tree_wf <-
+	workflows::workflow() |>
+	workflows::add_recipe(rec_bodytemp) |>
+	workflows::add_model(tree_spec)
+```
+
+Now we'll do something new -- we need to **tune** the model! If you try to
+fit the model now, you'll get some issues because of those tuning placeholders
+we put in before. Now we'll fit our model with many different combinations
+of these tuning parameters (aka hyperparameters, I keep switching back and
+forth but they mean the same thing) to our cross-validation folds.
+
+We are going to tune by **grid evaluation**, which is a simple and easy, but
+relatively inefficient, way to select hyperparameters. We just need to define
+a grid of values that each of our parameters can take on. Figuring out
+what values these parameters are allowed to take and what a good range to
+choose is actually quite difficult, so I recommend looking at the
+defaults and then updating as you like.
+
+```{r}
+# Extract the parameters from the model
+tree_parms <-	hardhat::extract_parameter_set_dials(tree_spec)
+
+# Build a regularly sampled grid
+dials::grid_regular(tree_parms)
+```
+
+OK so from this sample you can kind of see what the values should look like.
+Since we now know what to expect, I'm going to build a grid myself. I encourage
+you to test the other options of `grid_regular()` and also look at alternatives
+like `grid_latin_hypercube()`. This kind of stuff is not very intuitive so
+don't feel bad about using the defaults. The more you work on this,
+the more you get a feeling for what kind of values are appropriate. Of course
+I don't know anything about this example so we'll see how well my model works.
+Remember that **the more sets of parameters you test, the longer tuning will
+take**. If you need to do a lot of tuning in order to get a well-fitting model,
+you should look into other tuning methods.
+
+```{r}
+tree_grid <-
+	tidyr::expand_grid(
+		cost_complexity = 10 ^ c(-10, -5, -3, -1),
+		tree_depth = c(2, 3, 5, 10),
+		min_n = c(2, 20, 50)
+	)
+
+dplyr::glimpse(tree_grid)
+```
+
+This doesn't look like a lot of values to test but you can see that there are
+48 combinations. Remember that we are doing 5x5 cross validation, and you
+can see that we are already up to $48 \times 25$ model evaluations
+so you can see how this can take a long time!
+
+Ok, so now we need to invoke the tuning routine.
+
+```{r}
+#| message: false
+#| warning: false
+#| cache: true
+#| cache-lazy: false
+tree_res <-
+	tree_wf |>
+	tune::tune_grid(
+		# Put your CV object into the "resamples" argument
+		resamples = dat_cv,
+		# You don't have to put the parameters object in, but I highly recommend
+		# that you get into the habit of always doing it, because sometimes it
+		# is required and it can be difficult to tell when.
+		param_info = tree_parms,
+		# The grid we created goes into the grid argument. You can also put in a 
+		# number and the function will automatically make a grid for you
+		grid = tree_grid,
+		# Our metric set goes here, the tuning method will optimize based on the
+		# first metric in the list (RMSE for us)
+		metrics = metrics,
+		# You can pass other options into here, setting verbose = TRUE will
+		# print more information about what is going on.
+		control = tune::control_grid(
+			verbose = TRUE
+		)
+	)
+```
+
+EXPLAIN THIS
+
+```{r}
+# Select best parameter values after optimization
+best_tree_sa <- tune::select_best(tree_res, metric = "rmse")
+
+# Finalize workflow with best values
+final_tree_wf <-
+	tree_wf |>
+	tune::finalize_workflow(best_tree_sa)
+
+# Fit model to training data and augment the predictions to data frame
+tree_train_fit <- final_tree_wf |> parsnip::fit(data = dat_train)
+dat_train_tree_fit <- broom::augment(tree_train_fit, new_data = dat_train)
+```
+
+
+## LASSO model
+
+## Random forest model
+
+# Model evaluation
+
+# Comments for specific models
+
+# Model selection
+
+# Final evaluation
+
+<!-- END OF FILE -->
