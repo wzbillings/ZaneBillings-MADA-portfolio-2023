@@ -5,4 +5,337 @@ output:
     toc: FALSE
 ---
 
-Placeholder file for the future Tidy Tuesday exercise.
+```{r setup}
+# I made the setup chunk visible so everyone can see what I did before starting
+# my explanations
+
+# Explicit declaration of dependencies
+box::use(
+	tidytuesdayR,
+	ggplot2[...],
+	zlib,
+	dplyr,
+	tidyr,
+	colorblindr
+)
+
+# Set ggplot theme
+ggplot2::theme_set(
+	zlib::theme_ms() +
+		ggplot2::theme(
+			plot.background = ggplot2::element_rect(fill = "white", color = "white"),
+			axis.text = ggplot2::element_text(size = 16, color = "black"),
+			axis.title = ggplot2::element_text(size = 18),
+			plot.subtitle = ggplot2::element_text(
+				size = 16, hjust = 0, margin = ggplot2::margin(b = 2)
+			),
+			plot.title = ggplot2::element_text(
+				size = 24, hjust = 0, margin = ggplot2::margin(b = 4)
+			),
+			plot.caption = ggplot2::element_text(size = 14),
+			strip.text = ggplot2::element_text(
+				size = 16, hjust = 0.5, margin = ggplot2::margin(b = 2, t = 2)
+			),
+			panel.spacing = ggplot2::unit(2, "lines"),
+			legend.position = "bottom",
+			legend.text = ggplot2::element_text(size = 16, color = "black"),
+			legend.title = ggplot2::element_text(size = 18, color = "black")
+		)
+)
+
+# Set global options
+options(tidymodels.dark = TRUE)
+```
+
+This week's **Tidy Tuesday** dataset is on egg production! As an egg enjoyer,
+I am very excited about this. Although, I do think it's interesting that the
+data only extend through 2021 -- we're currently going through an extremely
+severe avian influenza outbreak that has impacted egg production in the US,
+so it would be interesting to see how the trends change. (It would also
+be interesting to compare the drop in egg production in cage-free vs
+non-cage-free chickens if that data is available, as a proxy for whether
+there is increased avian influenza burden in non-cage-free chickens, but we
+can't do any of that with this data so I'll stop talking about it now.)
+
+# Data loading
+
+But anyway, we first need to start by loading the data. This week there
+are two datasets, which is explained on the [documentation page](https://github.com/rfordatascience/tidytuesday/tree/master/data/2023/2023-04-11).
+I originally copied and pasted the code from their site, but it was broken.
+(So I submitted a PR and we will see if it gets merged.) But you have
+to add the hyphens to the names (and thus the backticks) if you use the
+`tidytuesdayR` package to load the data.
+
+```{r}
+tuesdata <- tidytuesdayR::tt_load('2023-04-11')
+
+eggproduction <- tuesdata$`egg-production`
+cagefreepercentages <- tuesdata$`cage-free-percentages`
+```
+
+# Initial exploration and wrangling
+
+OK, first things first let's just look at the data sets.
+
+```{r}
+dplyr::glimpse(eggproduction)
+
+dplyr::glimpse(cagefreepercentages)
+```
+
+The first thing that I notice is that the `cagefreepercentages` observed months
+are not the same as the observed months in the `eggproduction` data, so
+we cannot immediately join the data together. We would have to make some
+assumptions about how to combine the dates if we wanted to do that.
+Otherwise, the `cagefreepercentages` data looks pretty simple, with two
+time series observations and the months of observation, and no other
+variables.
+
+The `eggproduction` data appears to also have two main time series observations,
+`n_hens` and `n_eggs`, along with the month of observation, and two different
+covariates, the `prod_type` and the `prod_process`, which are explained in the
+data dictionary. There should be 2 unique values of `prod_type` and 3 unique
+values of `prod_process` (although one of them is `all` which always kind
+of annoys me). Let's take a look at the number of observations in each of
+these strata.
+
+```{r}
+with(
+	eggproduction,
+	table(prod_type, prod_process)
+)
+```
+
+OK, so the data are balanced in terms of the month of observations. We see
+that there is no cage-free designation for hatching eggs, which is why we
+have the `all` level. So I think we can organize the data a little bit
+differently, in a way that will make it a bit easier to explore. I think
+we should have a variable with the levels "hatching eggs", "non-organic table
+eggs", and "organic table eggs". In order to make sure we can do that,
+let's first check that the non-organic table eggs and organic table eggs
+add up to make 'all' table eggs.
+
+```{r}
+# It will be easier if we check n_hens and n_eggs separately. So first we'll
+# do n_eggs
+eggproduction |>
+	dplyr::filter(prod_type == "table eggs") |>
+	dplyr::select(-prod_type, -source, -n_hens) |>
+	tidyr::pivot_wider(names_from = prod_process, values_from = n_eggs) |>
+	dplyr::mutate(sum = `cage-free (non-organic)` + `cage-free (organic)`)
+```
+
+OK, from the header of this dataset we can see that these two categories DO NOT
+add up the way I thought they should. There's apparently way more in the "all" category than just these two. So I went back
+to the data dictionary and saw that it says "The value 'all' includes cage-free and conventional housing" which does not make a lot of sense to me. So I guess the "all" category
+also includes non-cage-free eggs.
+
+NEED TO FIX THIS PART
+
+If it includes cage-free
+eggs, how do we have more cage-free eggs than we have "all" eggs for
+some of the observed months? So I guess that "all" is just a bad label, and this
+is actually a separate type of `prod_process` entirely. My guess is that maybe
+we do not know whether these eggs are organic or not? I'm not sure, I would
+probably have to read the PDF reports to figure it out and I don't want to do
+that right now. So my idea for reorganizing the data won't work, we'll just
+have to leave it the way that it is.
+
+Now let's try to put the two datasets together.  First I'll need
+to remove the "source" columns from each dataset, since those won't be useful
+in our analysis anyways, then I'll do a FULL join -- this will keep at least
+one copy of each record in both datasets, and will only join together the
+records that match. I'll explain my motivation for doing this in a few steps.
+I've also specified in the join command that this join should be **many-to-one**,
+which means that there are multiple records in `eggproduction` (the left data
+set) that can match each record in `cagefreepercentages` (the right
+data set), because we want the `cagefreepercentages` to be duplicated for
+each of our strata for each month in the `eggproduction` dataset. Finally,
+I sorted by the observed month, an I'll explain why in the next step.
+
+```{r, error=TRUE}
+joined_data <-
+	dplyr::full_join(
+		eggproduction |> dplyr::select(-source),
+		cagefreepercentages |> dplyr::select(-source),
+		"observed_month",
+		relationship = "many-to-one"
+	) |>
+	dplyr::arrange(observed_month)
+```
+
+OK, so that did not work. You can see we got an error, and this is because of
+the "many-to-one" relationship that I specified. We actually got a **many-to-many**
+merge when dplyr compared the key sets of the two data frames. That means that
+there are some months with multiple records in the `cagefreepercentages`
+dataset, so let's take a look at that.
+
+```{r}
+count_months <-
+	cagefreepercentages |>
+	dplyr::count(observed_month) |>
+	dplyr::filter(n > 1)
+
+count_months
+```
+
+There are five observed months with two observations! Let's take a look at
+those ones.
+
+```{r}
+cagefreepercentages |>
+	dplyr::filter(observed_month %in% count_months$observed_month)
+```
+
+OK, interestingly we have some records with multiple sources. I guess I
+shouldn't have just dropped the source without looking at it! For this
+exploration, I'm going to *drop the rows with computed as the source.* That might
+not be the best choice to make here, but it will make my life easier so that's
+what I'm going to do. In a real life setting we would want to think about this
+a little harder.
+
+For the `eggproduction` data, we know that each stratum was measured the same
+number of times, so I don't think we have the same issue there. But we'll see
+if anything fishy shows up later. So now let's go ahead and join the data
+then sort by month.
+
+```{r}
+cage_free_for_merge <-
+	cagefreepercentages |>
+	dplyr::filter(source != "computed") |>
+	dplyr::select(-source)
+
+joined_data <-
+	dplyr::full_join(
+		eggproduction |> dplyr::select(-source),
+		cage_free_for_merge,
+		"observed_month",
+		relationship = "many-to-one"
+	) |>
+	dplyr::arrange(observed_month)
+
+dplyr::glimpse(joined_data)
+```
+
+OK, so you can see here that our data now starts with a bunch of NAs!
+That's because there are some dates in the `cagefreepercentages` data that
+are earlier than anything in `eggproduction`, and when we do a full join,
+records that don't have a match get the columns from the other data filled in
+with missing values.
+
+So here's why I wanted to join the data together like this: we are going to
+make the assumption that if we measured `percent_hens` and `percent_eggs`
+at some time, *that value doesn't change until the next measurement*. Yes, this
+is a completely unrealistic assumption, but it is often a useful assumption,
+because then we can fill in the "gaps" for the measurements that were made
+at different times in the two datasets, so we get more useful data points.
+To do this, we can just "fill down" the values in the `percent_hens` and
+`percent_eggs` column -- one we get a measured value, go down the column
+and replace NAs with that measurement, until we get to the next measured value.
+
+```{r}
+filled_data <-
+	joined_data |>
+	tidyr::fill(percent_hens, percent_eggs, .direction = "down")
+```
+
+Now, since I think our main question of interest will be about the data from
+`eggproduction`, let's filter out all the rows with dates that did NOT match
+that dataset.
+
+```{r}
+filtered_data <-
+	filled_data |>
+	dplyr::filter(observed_month %in% eggproduction$observed_month)
+
+dplyr::glimpse(filtered_data)
+```
+
+OK, now it looks like there is only one more thing to check to me -- the
+`percent_eggs`. It looks like it could be all NAs.
+
+```{r}
+sum(is.na(filtered_data$percent_eggs)) / nrow(filtered_data)
+```
+
+Yep, it is 100% NAs. I bet all the values from that column were from the
+`computed` source that I filtered out. If one wanted to, we could fill
+in those values the same way, or deal with this in a few other ways,
+but for now I am just going to drop that column. But looking at the egg
+production might actually be interesting, so one should really consider
+if dropping it is the right call.
+
+```{r}
+filtered_data2 <-
+	filtered_data |>
+	dplyr::select(-percent_eggs)
+```
+
+Now that I've been looking at it, I still think we can reclassify the
+`prod_type` and `prod_process` variables into one variable to make our
+lives a bit easier, so that will be my last cleaning step.
+
+```{r}
+model_data <-
+	filtered_data2 |>
+	dplyr::mutate(
+		egg_type = ifelse(
+			prod_type == "hatching eggs", "hatching eggs", prod_process
+		),
+		egg_type = factor(
+			egg_type,
+			levels = c("hatching eggs", "all", "cage-free (organic)",
+								 "cage-free (non-organic)"),
+			labels = c(
+				"hatching eggs",
+				"table eggs (other)",
+				"table eggs (cage-free organic)",
+				"table eggs (cage-free non-organic)"
+			)
+		)
+	) |>
+	dplyr::select(
+		observed_month,
+		egg_type,
+		n_hens,
+		n_eggs,
+		percent_hens
+	)
+
+dplyr::glimpse(model_data)
+```
+
+OK, so now I think our data is ready to go. Right now I am thinking that
+**predicting the number of eggs** based on time, number of hens, and percent
+of cage free eggs, stratified by egg type, might
+be a neat question to ask. So let's do some more EDA in that direction.
+
+# EDA
+
+First let's make a time-series plot of the different variables so we can
+see how all of them change over time. First I'll make a plot for the
+number of eggs, the outcome.
+
+```{r}
+model_data |>
+	ggplot() +
+	aes(
+		x = observed_month,
+		y = n_eggs,
+		color = egg_type
+	) +
+	geom_line(linewidth = 2) +
+	scale_y_continuous(
+		labels = scales::label_number(scale_cut = scales::cut_short_scale()),
+		trans = "log10"
+	) +
+	colorblindr::scale_color_OkabeIto() +
+	labs(
+		x = "Number of eggs (log scale)",
+		y = "Month",
+		color = NULL
+	)
+```
+
+
+<!-- END OF FILE -->
