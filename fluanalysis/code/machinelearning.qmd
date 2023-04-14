@@ -291,7 +291,224 @@ tree_res <-
 	)
 ```
 
-EXPLAIN THIS
+And now our model is tuned! The `tree_res` object stores the performance
+results from all of those hundreds (or thousands depending on how many
+parameter combinations you check) of model runs. Now we'll quickly go
+through the other two models, only stopping to chat where there are new
+details.
+
+## LASSO model
+
+Our LASSO workflow will actually look very similar to our previous linear
+regression workflows -- however, we want to use the `glmnet` engine instead
+of the `lm` (or `glm`) engine. By looking at the documentation for `linear_reg()`,
+you can see that in order to do LASSO we should manually set the argument
+`mixture = 1`, while we'll `tune()` the penalty argument, which determines
+the "amount of LASSO-ness" (completely technical term) that our model
+should have.
+
+```{r}
+# Create the recipe
+lasso_spec <-
+	parsnip::linear_reg(
+		mixture = 1,
+		penalty = parsnip::tune()
+	) |>
+	# Decision trees can be for either classification or regression so you
+	# should always set the mode for this model!!
+	parsnip::set_mode("regression") |>
+	# Set the engine -- I recommend that you do this even though we are using
+	# the default because the tidyverse/tidymodels teams sometimes like
+	# to change the defaults
+	parsnip::set_engine("glmnet")
+
+# Put the recipe and model together into a workflow
+lasso_wf <-
+	workflows::workflow() |>
+	workflows::add_recipe(rec_bodytemp) |>
+	workflows::add_model(lasso_spec)
+```
+
+Now we'll set up a grid and do tuning the same way. This time I'll use the
+automatically generated grid.
+
+```{r}
+# Extract the parameters from the model
+lasso_parms <- hardhat::extract_parameter_set_dials(lasso_spec)
+
+# Build a regularly sampled grid
+lasso_grid <- dials::grid_regular(lasso_parms, levels = 10)
+
+lasso_grid
+```
+
+And now we tune the model.
+
+```{r}
+#| message: false
+#| warning: false
+#| cache: true
+#| cache-lazy: false
+lasso_res <-
+	lasso_wf |>
+	tune::tune_grid(
+		resamples = dat_cv,
+		param_info = lasso_parms,
+		grid = lasso_grid,
+		metrics = metrics,
+		control = tune::control_grid(
+			verbose = TRUE
+		)
+	)
+```
+
+OK, all is going well so far. Note that if you get the `A correlation
+computation is required but estimate is constant` warning, you can
+pretty much just ignore it. This doesn't matter unless you want to evaluate
+on some specific metrics (mainly $R^2$, but we're using RMSE).
+
+Now onto the final and most complex model, the random forest.
+
+## Random forest model
+
+We set the random forest up in the same way as the other models…mostly. Note
+that we've specified a few additional arguments in the `set_engine()` part.
+These arguments are passed directly to the underlying implementation, which
+here is the `ranger` package. The `num.threads` argument allows our model
+to be evaluated in parallel, which can often speed up these very complicated
+models like random forest. The `importance = "permutation"` argument will
+allow us to easily get the variable importance later, a measurement of which
+variables are the most predictive of the outcome.
+
+```{r}
+rf_spec <-
+	parsnip::rand_forest(
+		mtry  = parsnip::tune(),
+		min_n = parsnip::tune(),
+		trees = 1000
+	) |>
+	parsnip::set_engine(
+		"ranger",
+		num.threads = 8,
+		importance = "permutation"
+	) |>
+	parsnip::set_mode("regression")
+
+rf_wf <-
+	workflows::workflow() |>
+	workflows::add_recipe(rec_bodytemp) |>
+	workflows::add_model(rf_spec)
+```
+
+Now, for the random forest we have an additional step that we need to
+do before we can start tuning. For this model, we must **finalize** the
+parameter set, because the hyperparameter `mtry` has a *data-dependent range*,
+from 1 to the number of predictors in our training data. The easiest
+way to do this is like I will show here. 
+
+:::{.callout-note collapse="true"}
+Note that I sort of lied a little bit here. For this example, you again don't
+*need* the parameter set argument at all, if you use grid tuning and manually
+specify the grid argument. You only *need* to finalize this if you want to have
+`tidymodels` automatically generate a grid for you, or if you want to use a more
+advanced (likely better) tuning method. So I thought I'd include how to do this
+anyways since the error you can get stumped both Andreas and me the first time
+we encountered it in 2021.
+:::
+
+```{r}
+rf_parms <-
+	rf_spec |>
+	hardhat::extract_parameter_set_dials() |>
+	dials::finalize(dat_train |> dplyr::select(-BodyTemp))
+```
+
+Now we can create our training grid. Note that the random forest model actually
+has three tuneable hyperparameters, but I've manually specified the value
+for the `trees` parameter -- manually tuning this parameter often has
+very little effect on performance. Maybe 500 vs 1000 vs 2000 trees will make a
+difference in performance, but spacing the number of trees out on a grid
+like 500 vs 570 vs 610 or whatever will not be very impactful.
+Now, for `mtry` since we only have a very limited parameter range, I do
+think it is worthwhile to try every possible value. That will
+require quite a bit of evaluation, so we'll only try a few different
+values of `min_n`, although in practice it's probably easier to just do
+something like Latin hypercube sampling (or not use grid evaluation). If you want
+to talk about the tuning methods I typically like to use, feel free to ask
+me in Slack or email.
+
+```{r}
+rf_grid <-
+	tidyr::expand_grid(
+		mtry = seq(1, 24, 1),
+		min_n = c(2, 10, 50, 100, 250)
+	)
+
+rf_grid
+```
+
+Ok, now let's get to tuning. I imagine this one will take a bit of
+time.
+
+```{r}
+#| message: false
+#| warning: false
+#| cache: true
+#| cache-lazy: false
+rf_res <-
+	rf_wf |>
+	tune::tune_grid(
+		resamples = dat_cv,
+		param_info = rf_parms,
+		grid = rf_grid,
+		metrics = metrics,
+		control = tune::control_grid(
+			verbose = TRUE
+		)
+	)
+```
+
+Ok, great. Now all three of our models are tuned and we can move on to
+evaluating them.
+
+# Model evaluation
+
+For each of these models we need to do the following steps:
+
+1. Choose the best set of hyperparameters.
+1. Get the RMSE and compare to the null model.
+1. Make the diagnostic plots as described in the instructions.
+
+## Decision tree
+
+OK, first let's look at the performance of our different tuning parameters.
+
+```{r}
+tree_res |>
+	ggplot2::autoplot() +
+	zlib::theme_ms()
+```
+
+Interestingly, we see that a tree depth of 2 is always the best -- this is
+probably because trees with a higher depth tend to overfit much more. By
+constraining the tree depth, we get a more transportable model across our
+CV folds. Also notice that for a high depth tree (10), a higher cost
+complexity is much more important, whereas for a lower depth tree, the cost
+complexity does not seem to matter as much. While we probably need more
+data points to really evaluate this, that is usually true, because a high
+cost complexity forces the tree to have less splits. So if our tree depth is
+low, there are not that many splits that are available (a tree of depth 2
+has 4 total split options) and the cost complexity is not so important.
+Also for low tree depth, the minimal node size is not so important, mostly
+for the same reason (there are just not that many splitting points available,
+so there is a lot of data at each node).
+
+Okay, we've now evaluated all of those hundreds (or thousands depending on how
+many parameter combinations you use) of models and we're ready to move on
+to the next step -- *finalizing* our workflow. This basically means we need
+to identify the "best" parameter set, and replace the `tune()` placeholders
+in our workflow with those values. Fortunately this is pretty easy to do in
+tidymodels.
 
 ```{r}
 # Select best parameter values after optimization
@@ -302,17 +519,128 @@ final_tree_wf <-
 	tree_wf |>
 	tune::finalize_workflow(best_tree_sa)
 
-# Fit model to training data and augment the predictions to data frame
-tree_train_fit <- final_tree_wf |> parsnip::fit(data = dat_train)
-dat_train_tree_fit <- broom::augment(tree_train_fit, new_data = dat_train)
+final_tree_wf
 ```
 
+In this output, you can see the final selected parameters. Now that we've
+selected the best parameters (according to cross-validated RMSE), we want to
+see what the actual RMSE was. We can compare the RMSE on the training set,
+or the cross-validated RMSE. In 99% of cases, the **cross-validated metrics
+are more appropriate.** If you have a specific validation holdout set
+(in addition to the test/train sets), you can use the performance on that,
+but if you don't you usually want to look at the cross-validated RMSE.
+
+```{r}
+tree_mets <-
+	tree_res |>
+	tune::collect_metrics() |>
+	dplyr::filter(.config == best_tree_sa$.config)
+
+tree_mets
+```
+
+If you were writing this up for a paper, I would recommend writing a nice
+function that formats this how you want it so you can just make a nice table
+with one row for each model and columns showing the metrics of interest. But
+since I am not being graded, I'll leave that as an exercise for the interested
+reader. 
+
+You can see that the (cross-validated) tree RMSE is $`r round(tree_mets[[2, 6]], 2)` \pm `r round(tree_mets[[2, 8]], 2)`$ compared to our null RMSE that we got
+earlier of $`r round(null_metrics[[1, 3]], 2)`$. Note that there is not
+a lot of difference, the tree model is doing a bit better but really not
+that much better. We can also get the predictions on the entire training
+set and compare that RMSE. This is usually a good idea (*unless you have a
+separate validation set, then you don't need to do this*), but typically produces
+a more optimistic estimate than the CV error. However, with the predictions on
+the entire dataset we can look at model diagnostics and calibration.
+
+```{r}
+# Fit model to training data and augment the predictions to data frame
+tree_train_fit <- final_tree_wf |> parsnip::fit(data = dat_train)
+
+# Get the predictions on the training data
+dat_train_tree_fit <-
+	broom::augment(tree_train_fit, new_data = dat_train) |>
+	# calculate the residuals, we will need them later
+	dplyr::mutate(.resid = BodyTemp - .pred)
+
+# Get the RMSE and compare to null
+tree_metrics <-
+	dat_train_tree_fit |>
+	metrics(truth = BodyTemp, estimate = .pred)
+
+tree_metrics
+```
+
+So in this case, the training data set metrics are about the same as the CV
+metrics, which is good. If the training set and CV metrics are way different,
+you should probably go back to the drawing board on tuning and resampling
+and see if you've done anything wrong. It doesn't always mean you've done
+something wrong, but you don't want this estimate to be *wildly* better than the
+CV estimate. Now let's look at the diagnostic plots.
+
+```{r}
+# Plot Predictions vs observed values
+rf_pred_obs_plot <-
+	ggplot(dat_train_tree_fit, aes(y = BodyTemp, x = .pred)) +
+	geom_abline(slope = 1, intercept = 0, color = "red", linetype = 2) +
+	geom_jitter(height = 0, width = 0.01, alpha = 0.5) +
+	cowplot::theme_cowplot() +
+	labs(
+		title = "Decision tree: observed vs fitted",
+		y = "Observed",
+		x = "Fitted"
+	)
+# Plot model predictions vs residuals
+rf_pred_res_plot <-
+	ggplot(dat_train_tree_fit, aes(y = .resid, x = .pred)) +
+	geom_hline(yintercept = 0, color = "red", linetype = 2) +
+	geom_jitter(height = 0, width = 0.01, alpha = 0.5) +
+	cowplot::theme_cowplot() +
+	labs(
+		title = "Decision tree: residuals vs fitted",
+		y = "Residuals",
+		x = "Fitted"
+	)
+# Print both plots together
+# I think the "patchwork" package is a better more modern way to do this,
+# but I copied and pasted this code from a while back
+rf_diag <-
+	cowplot::plot_grid(
+		rf_pred_obs_plot, rf_pred_res_plot, ncol = 2
+	)
+rf_diag
+```
+
+Well, I think it is safe to say that this model does not look too great based
+on the diagnostics. We are only predicting four discrete values (because our
+best tree had a depth of 2), so we are obviously missing a lot of variation
+in our outcome. You can also notice that a lot of our residuals are high,
+indicating that we have a few very high residuals, which is explained by
+our model not being able to predict the highest temperature values at all.
+So a better model would have a larger range of predicted outcomes and would be
+better at fitting the few high outcomes, without sacrificing performance on
+the lower outcomes.
 
 ## LASSO model
 
+OK, first let's look at the tuning parameters.
+
+```{r}
+lasso_res |>
+	ggplot2::autoplot() +
+	zlib::theme_ms()
+```
+
+
 ## Random forest model
 
-# Model evaluation
+```{r}
+rf_res |>
+	ggplot2::autoplot() +
+	zlib::theme_ms()
+```
+
 
 # Comments for specific models
 
