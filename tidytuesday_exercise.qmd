@@ -34,7 +34,8 @@ ggplot2::theme_set(
 			),
 			plot.caption = ggplot2::element_text(size = 14),
 			strip.text = ggplot2::element_text(
-				size = 16, hjust = 0.5, margin = ggplot2::margin(b = 2, t = 2)
+				size = 16, hjust = 0.5,
+				margin = ggplot2::margin(b = 2, t = 2, l = 2, r =2)
 			),
 			panel.spacing = ggplot2::unit(2, "lines"),
 			legend.position = "bottom",
@@ -122,24 +123,21 @@ eggproduction |>
 	dplyr::filter(prod_type == "table eggs") |>
 	dplyr::select(-prod_type, -source, -n_hens) |>
 	tidyr::pivot_wider(names_from = prod_process, values_from = n_eggs) |>
-	dplyr::mutate(sum = `cage-free (non-organic)` + `cage-free (organic)`)
+	dplyr::mutate(
+		sum = `cage-free (non-organic)` + `cage-free (organic)`,
+		pct = sum / all * 100
+	)
 ```
 
 OK, from the header of this dataset we can see that these two categories DO NOT
 add up the way I thought they should. There's apparently way more in the "all" category than just these two. So I went back
 to the data dictionary and saw that it says "The value 'all' includes cage-free and conventional housing" which does not make a lot of sense to me. So I guess the "all" category
-also includes non-cage-free eggs.
-
-NEED TO FIX THIS PART
-
-If it includes cage-free
-eggs, how do we have more cage-free eggs than we have "all" eggs for
-some of the observed months? So I guess that "all" is just a bad label, and this
-is actually a separate type of `prod_process` entirely. My guess is that maybe
-we do not know whether these eggs are organic or not? I'm not sure, I would
-probably have to read the PDF reports to figure it out and I don't want to do
-that right now. So my idea for reorganizing the data won't work, we'll just
-have to leave it the way that it is.
+also includes non-cage-free eggs. For an actual analysis, we might want to
+think about representing the data a bit different, so e.g., we might want a
+variable with levels "not cage free", "cage free organic", and "cage free
+non-organic" instead of having "all" as a level, but for the purposes of
+this analysis I'll leave it as is. I'll come back to this idea of reorganizing
+the data in a few cleaning steps.
 
 Now let's try to put the two datasets together.  First I'll need
 to remove the "source" columns from each dataset, since those won't be useful
@@ -331,11 +329,369 @@ model_data |>
 	) +
 	colorblindr::scale_color_OkabeIto() +
 	labs(
-		x = "Number of eggs (log scale)",
-		y = "Month",
+		y = "Number of eggs (log scale)",
+		x = "Month",
 		color = NULL
+	) +
+	guides(color = guide_legend(ncol=2))
+```
+
+It looks like there's some variation in the trends over time that we can model,
+although it is clear that non-organic cage-free table eggs definitely has the
+strongest trend. Now let's look at the number of hens.
+
+```{r}
+model_data |>
+	ggplot() +
+	aes(
+		x = observed_month,
+		y = n_hens,
+		color = egg_type
+	) +
+	geom_line(linewidth = 2) +
+	scale_y_continuous(
+		labels = scales::label_number(scale_cut = scales::cut_short_scale()),
+		trans = "log10"
+	) +
+	colorblindr::scale_color_OkabeIto() +
+	labs(
+		y = "Number of hens (log scale)",
+		x = "Month",
+		color = NULL
+	) +
+	guides(color = guide_legend(ncol=2))
+```
+
+There appears to be a lot less variation, in general, in the number of hens,
+although we can see the same macro-level trends over time. I don't know that
+there's really anything else that's all that interesting to say here. Now
+let's look at the percent of cage-free hens trend over time.
+
+```{r}
+model_data |>
+	dplyr::select(observed_month, percent_hens) |>
+	dplyr::distinct() |>
+	ggplot() +
+	aes(
+		x = observed_month,
+		y = percent_hens
+	) +
+	geom_line(linewidth = 2) +
+	scale_y_continuous(
+		labels = scales::label_percent(scale = 1)
+	) +
+	labs(
+		x = "Month",
+		y = "Percentage of hens that are cage-free"
 	)
 ```
+
+We can see a pretty strong increasing trend here, with only a few dips. It will
+be interesting to see how well this trend correlates with the others! Speaking
+of correlations, I think we are kind of limited with the types of plots we
+can make here, but I think we can directly look at those kind of correlations.
+
+```{r}
+model_data |>
+	ggplot() +
+	aes(
+		x = n_hens,
+		y = n_eggs
+	) +
+	geom_point() +
+	geom_smooth(
+		formula = 'y ~ x',
+		method = "lm"
+	) +
+	facet_wrap(vars(egg_type), scales = "free") +
+	scale_x_continuous(
+		labels = scales::label_number(scale_cut = scales::cut_short_scale()),
+		trans = "log10"
+	) +
+	scale_y_continuous(
+		labels = scales::label_number(scale_cut = scales::cut_short_scale()),
+		trans = "log10"
+	) +
+	labs(
+		x = "Number of hens",
+		y = "Number of eggs"
+	)
+```
+
+As we might expect, the number of hens and the number of eggs appear to be
+highly correlated, with only a few outliers from a strong positive trend. Let's
+check the correlation with the percentage of cage-free hens.
+
+```{r}
+model_data |>
+	ggplot() +
+	aes(
+		x = percent_hens,
+		y = n_eggs
+	) +
+	geom_point() +
+	geom_smooth(
+		formula = 'y ~ x',
+		method = "lm"
+	) +
+	facet_wrap(vars(egg_type), scales = "free") +
+	scale_y_continuous(
+		labels = scales::label_number(scale_cut = scales::cut_short_scale()),
+		trans = "log10"
+	) +
+	scale_x_continuous(
+		labels = scales::label_percent(scale = 1)
+	) +
+	labs(
+		x = "Percent cage-free hens",
+		y = "Number of eggs"
+	)
+```
+
+Here, we see a somewhat strong linear relationship, although especially for
+table eggs it is clear that the relationship is not the strong. The other
+egg types also show much more variation that doesn't appear completely
+random. Overall, I expect time to be the strongest predictor of number of eggs,
+number of hens, and percentage of cage-free hens. And it is clear that the trends
+differ by the egg type. But now I think we can fit some models to try and do
+prediction.
+
+# Model fitting
+
+For this analysis, there are 4 candidate models I am interested in trying.
+
+1. Linear regression, everyone's favorite and the simplest model (using
+ordinary least squares).
+1. Random forest, a flexible alternative to parametric regression.
+1. Auto-ARIMA, an easy and flexible time series model.
+1. PROPHET, another easy and flexble time series model that sometimes beats
+out ARIMA.
+
+And of course we will compare these models to the null model, which will
+always predict the mean.
+
+## Data splitting
+
+In order to see how our predictions might perform on new data, we'll
+first create a holdout set of data that we won't look at until we've chosen
+a model. Since we have time-series data, it is typically better to train
+the data on some time period of initial data, and test on a later portion,
+rather than choosing random points for our test set. Fortunately, that is
+easy using `rsample`.
+
+```{r}
+# We actually don't need to set the seed for time-series splitting cause it
+# is deterministic, but let's do it for fun and just in case.
+set.seed(100)
+
+dat_split <- rsample::initial_time_split(model_data, prop = 3/4)
+dat_train <- rsample::training(dat_split)
+dat_test  <- rsample::testing(dat_split)
+```
+
+Now some of our models also require the selection of hyperparameters, so to
+improve our hyperparameter choice, we need to create some resamples that
+we can fit our model to. Again, this is more complicated for time series
+data than it is for regular data, and it's not something that I really
+know a lot about. So I looked at the [rsample website](https://rsample.tidymodels.org/articles/Common_Patterns.html#time-based-resampling)
+and I'll use the `rolling_origin()` method for creating resamples because it
+seems pretty reasonable in my naive opinion. Since I don't know much
+about this, I'll use the default settings.
+
+```{r}
+dat_resamples <-
+	dat_train |>
+	rsample::rolling_origin()
+```
+
+## Workflow setup
+
+For tidymodels, we need a `recipe` and one or more model specs, so first I'll
+set up the recipe. We've already done most of the preprocessing though, so
+the only step we need is to ensure that our fitting takes the egg type
+groups into account.
+
+For the types of models I want to use, we'll actually need two recipes -- 
+one that leaves the date as a date variable for the `modeltime` models, and one that transforms the
+date into a numeric variable that the `tidymodels` models can understand.
+
+```{r}
+tm_recipe <-
+	recipes::recipe(
+		n_eggs ~ date_numeric + n_hens + percent_hens + egg_type,
+		data = dat_train
+	) |>
+	# Make the date into a numeric variable
+	recipes::step_mutate(
+		date_numeric = as.numeric(date_numeric)
+	) |>
+	# Change the role of egg_type so it isn't included as a first-order
+	# predictor
+	recipes::update_role(egg_type, new_role = "grouping") |>
+	# Create interaction terms of all first-order predictors with egg_type
+	# This is the same as stratifying
+	recipes::step_interact(terms = ~recipes::all_predictors() * egg_type)
+
+# Because of some fitting detail about extraneous regressors or something
+# we cannot include the interaction terms in the time series models
+mt_recipe <-
+	recipes::recipe(
+		n_eggs ~ observed_month + n_hens + percent_hens + egg_type,
+		data = dat_train
+	) |>
+	# Change the role of egg_type so it isn't included as a first-order
+	# predictor
+	recipes::update_role(egg_type, new_role = "grouping")
+```
+
+Now we need to declare model specifications for each model we want to fit.
+I intend to use a `workflowset` in the next step, so I'm going to create
+these in a list.
+
+```{r}
+model_specs <-
+	list(
+		"null_model" =
+			parsnip::null_model() |>
+			parsnip::set_engine("parsnip"),
+		"lin_reg" =
+			parsnip::linear_reg() |>
+			parsnip::set_engine("lm"),
+		"rf" =
+			parsnip::rand_forest(
+				mtry = parsnip::tune(),
+				trees = 2000,
+				min_n = parsnip::tune()
+			),
+		"ARIMA" =
+			modeltime::arima_reg() |>
+			parsnip::set_engine("auto_arima"),
+		"PROPHET" =
+			modeltime::prophet_boost(
+				prior_scale_changepoints = parsnip::tune(),
+				seasonality_yearly = FALSE,
+				seasonality_weekly = FALSE,
+				seasonality_daily = FALSE,
+			) |>
+			parsnip::set_engine("prophet_xgboost")
+	)
+
+# Set the mode to regression for all model specs
+model_specs <- lapply(model_specs, \(x) parsnip::set_mode(x, "regression"))
+```
+
+Now we'll cross our recipe with our model specs to get a `workflowset`, a
+collection of workflows that we can map all of our fitting functions to.
+
+```{r}
+preproc_list <-
+	c(rep(list(tm_recipe), times = 3), rep(list(mt_recipe), times = 2)) |>
+	rlang::set_names(c(rep("tm", times = 3), rep("mt", times = 2)))
+
+
+wfs <-
+	workflowsets::workflow_set(
+		preproc = preproc_list,
+		models = model_specs,
+		cross = FALSE
+	)
+```
+
+## Hyperparameter tuning
+
+Now that we have our workflowset ready, we can tune our models. First, I think
+this will be pretty slow if we do it all sequentially, so we want to intialize
+a parallel processing backend.
+
+```{r}
+library(tidymodels)
+library(finetune)
+library(modeltime)
+cl <- parallel::makePSOCKcluster(16)
+doParallel::registerDoParallel(cl)
+```
+
+Now we can make a tuning routine to all of our workflows. Normally I mess
+around with this a bit more, but I'm feeling lazy today, so I'll just
+copy and paste (and change variable names) the code I used for my most
+recent machine learning project. I like this one because it automatically
+finalizes the data-dependent parameters, and it's pretty fast. If I really wanted
+to make sure something was tuned well, I would use `tune_bayes()` or
+`tune_sim_anneal()` but I don't think either of those will automatically
+finalize parameters.
+
+```{r}
+wfs_res <-
+	wfs |>
+			workflow_map(
+			"tune_race_anova",
+			resamples = dat_resamples,
+			grid = 25,
+			metrics = yardstick::metric_set(mae, rmse, rsq),
+			verbose = TRUE,
+			seed = 370,
+			control = control_race(
+				verbose = TRUE,
+				event_level = "second",
+				allow_par = TRUE,
+				parallel_over = "everything"
+			)
+		)
+```
+
+```{r}
+gam_spec <-
+	parsnip::gen_additive_mod(
+		select_features = FALSE,
+		adjust_deg_free = FALSE
+	) |>
+	parsnip::set_engine("mgcv") |>
+	parsnip::set_mode("regression")
+
+test_wf <- workflow(tm_recipe) |> add_model(gam_spec, formula = gam_fmla)
+
+test <-
+	fit_resamples(test_wf, resamples = dat_resamples, metrics = metrics)
+```
+
+```{r}
+spec <-
+	modeltime::arima_reg(
+		seasonal_period = 1,
+		seasonal_ar = 0,
+		seasonal_differences = 0,
+		seasonal_ma = 0,
+		non_seasonal_ar = 10,
+		non_seasonal_differences = 10,
+		non_seasonal_ma = 10
+	) |>
+	parsnip::set_engine("auto_arima") |>
+	parsnip::set_mode("regression")
+
+test_wf <-
+	workflows::workflow() |>
+	add_recipe(mt_recipe) |>
+	add_model(spec)
+
+test <-
+	fit(
+		spec,
+		n_eggs ~ observed_month + egg_type,
+		data = dat_train
+		#resamples = dat_resamples,
+	#	grid = 25,
+	#	metrics = yardstick::metric_set(mae, rmse, rsq),
+		# seed = 370,
+		# control = control_resamples(
+		# 	verbose = TRUE,
+		# 	allow_par = TRUE,
+		# 	parallel_over = "everything"
+		# )
+	)
+
+```
+
+
 
 
 <!-- END OF FILE -->
